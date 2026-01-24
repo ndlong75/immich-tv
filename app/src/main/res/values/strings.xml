@@ -246,4 +246,17 @@
     <string name="already_added_metadata">You already added every possible meta data</string>
     <string name="no_items_to_play">No items to play</string>
     <string name="no_assets_for_screensaver">No assets to show for screensaver. Please configure a different screensaver type in the settings</string>
+    <string name="edit_metadata_title">Edit metadata</string>
+    <string name="meta_data_type_dialog_title">Type</string>
+    <string name="meta_data_type_desc">Type of metadata</string>
+    <string name="meta_data_type_title">Type of metadata</string>
+    <string name="meta_data_order_dialog_title">Order</string>
+    <string name="meta_data_order_desc">Order of metadata</string>
+    <string name="meta_data_order_title">Order of metadata</string>
+    <string name="meta_data_font_size_title">Font size</string>
+    <string name="meta_data_font_size_dialog_title">Font size</string>
+    <string name="meta_data_padding_title">Padding</string>
+    <string name="meta_data_padding_dialog_title">Padding above and below the item</string>
+    <string name="meta_data_delete_desc">Delete item</string>
+    <string name="meta_data_save_desc">Save item</string>
 </resources>
