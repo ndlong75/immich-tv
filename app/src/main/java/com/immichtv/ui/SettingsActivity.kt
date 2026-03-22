@@ -35,9 +35,13 @@ class SettingsActivity : FragmentActivity() {
         statusText = findViewById(R.id.text_status)
         serverInfoText = findViewById(R.id.text_server_info)
 
-        // Load existing values
-        serverUrlInput.setText(PrefsManager.serverUrl)
-        emailInput.setText(PrefsManager.userEmail)
+        // Load existing values or defaults
+        serverUrlInput.setText(
+            PrefsManager.serverUrl.ifBlank { "http://192.168.10.2:2283" }
+        )
+        emailInput.setText(
+            PrefsManager.userEmail.ifBlank { "ndlong75@gmail.com" }
+        )
 
         // Show current login status
         if (PrefsManager.isConfigured()) {

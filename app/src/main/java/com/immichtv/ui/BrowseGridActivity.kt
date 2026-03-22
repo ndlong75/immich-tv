@@ -25,6 +25,8 @@ class BrowseGridActivity : FragmentActivity() {
         const val MODE_TIMELINE = "timeline"
         const val MODE_SEARCH = "search"
         const val MODE_FOLDER = "folder"
+        const val MODE_PHOTOS = "photos"
+        const val MODE_RANDOM = "random"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,10 +53,16 @@ class AssetGridFragment : VerticalGridSupportFragment() {
 
     companion object {
         private const val NUM_COLUMNS = 5
+        private const val BATCH_SIZE = 200
     }
 
     private val gridAdapter = ArrayObjectAdapter(CardPresenter(ImmichClient.baseUrl))
-    private var assets: List<Asset> = emptyList()
+    private var allAssets: MutableList<Asset> = mutableListOf()
+    private var currentPage = 1
+    private var isLoading = false
+    private var hasMore = true
+    private var timelineBucketIndex = 0
+    private var timelineBuckets: List<TimeBucket> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +76,7 @@ class AssetGridFragment : VerticalGridSupportFragment() {
         title = arguments?.getString(BrowseGridActivity.EXTRA_TITLE) ?: "Photos"
 
         setupClickListener()
+        setupScrollListener()
         loadAssets()
     }
 
@@ -77,86 +86,234 @@ class AssetGridFragment : VerticalGridSupportFragment() {
         }
     }
 
+    private fun setupScrollListener() {
+        setOnItemViewSelectedListener(OnItemViewSelectedListener { _, item, _, _ ->
+            // Auto-load next batch when near the end
+            if (item is Asset && !isLoading && hasMore) {
+                val position = allAssets.indexOfFirst { it.id == (item as? Asset)?.id }
+                if (position >= allAssets.size - 20) {
+                    loadNextBatch()
+                }
+            }
+        })
+    }
+
     private fun loadAssets() {
         val mode = arguments?.getString(BrowseGridActivity.EXTRA_MODE) ?: return
         val id = arguments?.getString(BrowseGridActivity.EXTRA_ID) ?: ""
-        val searchField = arguments?.getString(BrowseGridActivity.EXTRA_SEARCH_FIELD)
 
+        when (mode) {
+            BrowseGridActivity.MODE_ALBUM -> loadAlbum(id)
+            BrowseGridActivity.MODE_PERSON -> loadPerson(id)
+            BrowseGridActivity.MODE_MEMORY -> loadMemory(id)
+            BrowseGridActivity.MODE_TIMELINE -> loadTimeline()
+            BrowseGridActivity.MODE_PHOTOS -> loadPhotos()
+            BrowseGridActivity.MODE_RANDOM -> loadRandom()
+            BrowseGridActivity.MODE_SEARCH -> loadSearch(id)
+            BrowseGridActivity.MODE_FOLDER -> loadFolder(id)
+        }
+    }
+
+    // ── Paginated loaders ───────────────────────────────────────────────
+
+    private fun loadPhotos() {
+        isLoading = true
         lifecycleScope.launch {
             try {
-                assets = when (mode) {
-                    BrowseGridActivity.MODE_ALBUM -> {
-                        val album = ImmichClient.getApi().getAlbumDetail(id)
-                        album.assets
-                    }
-                    BrowseGridActivity.MODE_PERSON -> {
-                        val response = ImmichClient.getApi().searchAssets(
-                            SearchRequest(personIds = listOf(id), size = 200, order = "desc")
-                        )
-                        response.assets.items
-                    }
-                    BrowseGridActivity.MODE_MEMORY -> {
-                        val memories = ImmichClient.getApi().getMemories()
-                        memories.find { it.id == id }?.assets ?: emptyList()
-                    }
-                    BrowseGridActivity.MODE_TIMELINE -> {
-                        // Load by time buckets for date-grouped display
-                        loadTimelineBuckets()
-                    }
-                    BrowseGridActivity.MODE_SEARCH -> {
-                        // Smart search by explore category value
-                        val response = ImmichClient.getApi().smartSearch(
-                            SmartSearchRequest(query = id, size = 200)
-                        )
-                        response.assets.items
-                    }
-                    BrowseGridActivity.MODE_FOLDER -> {
-                        // Search by original path containing the folder
-                        val response = ImmichClient.getApi().searchAssets(
-                            SearchRequest(
-                                query = id,
-                                size = 200,
-                                order = "desc"
-                            )
-                        )
-                        response.assets.items
-                    }
-                    else -> emptyList()
-                }
-
-                assets.forEach { asset -> gridAdapter.add(asset) }
-
-                if (assets.isEmpty()) {
-                    Toast.makeText(requireContext(), "No photos found", Toast.LENGTH_SHORT).show()
-                }
-
-                // Update title with count
-                title = "${arguments?.getString(BrowseGridActivity.EXTRA_TITLE) ?: "Photos"} (${assets.size})"
-
+                val response = ImmichClient.getApi().searchAssets(
+                    SearchRequest(size = BATCH_SIZE, page = currentPage, order = "desc")
+                )
+                val items = response.assets.items
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+                updateTitle()
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                showError(e)
+            } finally {
+                isLoading = false
             }
         }
     }
 
-    private suspend fun loadTimelineBuckets(): List<Asset> {
-        val buckets = ImmichClient.getApi().getTimeBuckets(size = "MONTH")
-        val allAssets = mutableListOf<Asset>()
-        // Load first 6 months for performance
-        for (bucket in buckets.take(6)) {
+    private fun loadRandom() {
+        isLoading = true
+        lifecycleScope.launch {
             try {
-                val bucketAssets = ImmichClient.getApi().getTimeBucket(
-                    size = "MONTH",
-                    timeBucket = bucket.timeBucket
-                )
-                allAssets.addAll(bucketAssets)
-            } catch (_: Exception) {}
+                val items = ImmichClient.getApi().getRandomAssets(BATCH_SIZE)
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            } finally {
+                isLoading = false
+            }
         }
-        return allAssets
+    }
+
+    private fun loadPerson(personId: String) {
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                val response = ImmichClient.getApi().searchAssets(
+                    SearchRequest(
+                        personIds = listOf(personId),
+                        size = BATCH_SIZE,
+                        page = currentPage,
+                        order = "desc"
+                    )
+                )
+                val items = response.assets.items
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    private fun loadSearch(query: String) {
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                val response = ImmichClient.getApi().smartSearch(
+                    SmartSearchRequest(query = query, size = BATCH_SIZE, page = currentPage)
+                )
+                val items = response.assets.items
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    private fun loadFolder(path: String) {
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                val response = ImmichClient.getApi().searchAssets(
+                    SearchRequest(query = path, size = BATCH_SIZE, page = currentPage, order = "desc")
+                )
+                val items = response.assets.items
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    // ── Non-paginated loaders ───────────────────────────────────────────
+
+    private fun loadAlbum(albumId: String) {
+        lifecycleScope.launch {
+            try {
+                val album = ImmichClient.getApi().getAlbumDetail(albumId)
+                hasMore = false
+                addAssets(album.assets)
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            }
+        }
+    }
+
+    private fun loadMemory(memoryId: String) {
+        lifecycleScope.launch {
+            try {
+                val memories = ImmichClient.getApi().getMemories()
+                val memory = memories.find { it.id == memoryId }
+                hasMore = false
+                addAssets(memory?.assets ?: emptyList())
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            }
+        }
+    }
+
+    private fun loadTimeline() {
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                if (timelineBuckets.isEmpty()) {
+                    timelineBuckets = ImmichClient.getApi().getTimeBuckets(size = "MONTH")
+                }
+                // Load 3 month-buckets per batch
+                val bucketsToLoad = timelineBuckets.drop(timelineBucketIndex).take(3)
+                val batchAssets = mutableListOf<Asset>()
+                for (bucket in bucketsToLoad) {
+                    try {
+                        val assets = ImmichClient.getApi().getTimeBucket(
+                            size = "MONTH", timeBucket = bucket.timeBucket
+                        )
+                        batchAssets.addAll(assets)
+                    } catch (_: Exception) {}
+                }
+                timelineBucketIndex += bucketsToLoad.size
+                hasMore = timelineBucketIndex < timelineBuckets.size
+                addAssets(batchAssets)
+                updateTitle()
+            } catch (e: Exception) {
+                showError(e)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    // ── Next batch (triggered by scroll) ────────────────────────────────
+
+    private fun loadNextBatch() {
+        val mode = arguments?.getString(BrowseGridActivity.EXTRA_MODE) ?: return
+        val id = arguments?.getString(BrowseGridActivity.EXTRA_ID) ?: ""
+        currentPage++
+
+        when (mode) {
+            BrowseGridActivity.MODE_PHOTOS -> loadPhotos()
+            BrowseGridActivity.MODE_RANDOM -> loadRandom()
+            BrowseGridActivity.MODE_PERSON -> loadPerson(id)
+            BrowseGridActivity.MODE_SEARCH -> loadSearch(id)
+            BrowseGridActivity.MODE_FOLDER -> loadFolder(id)
+            BrowseGridActivity.MODE_TIMELINE -> loadTimeline()
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+
+    private fun addAssets(newAssets: List<Asset>) {
+        // Deduplicate by ID
+        val existingIds = allAssets.map { it.id }.toSet()
+        val unique = newAssets.filter { it.id !in existingIds }
+        allAssets.addAll(unique)
+        unique.forEach { gridAdapter.add(it) }
+
+        if (allAssets.isEmpty()) {
+            Toast.makeText(requireContext(), "No photos found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateTitle() {
+        val baseTitle = arguments?.getString(BrowseGridActivity.EXTRA_TITLE) ?: "Photos"
+        title = "$baseTitle (${allAssets.size}${if (hasMore) "+" else ""})"
+    }
+
+    private fun showError(e: Exception) {
+        Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
     }
 
     private fun openAsset(asset: Asset) {
-        val imageAssets = assets.filter { it.type == AssetType.IMAGE }
+        val imageAssets = allAssets.filter { it.type == AssetType.IMAGE }
         val imageIndex = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
 
         if (asset.type == AssetType.VIDEO) {

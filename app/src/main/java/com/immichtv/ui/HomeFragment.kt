@@ -44,10 +44,20 @@ class HomeFragment : BrowseSupportFragment() {
 
     private fun setupEventListeners() {
         onItemViewClickedListener = OnItemViewClickedListener { _, item, _, row ->
+            val headerItem = (row as? ListRow)?.headerItem
+            val headerTitle = headerItem?.name ?: ""
+
             when (item) {
                 is AlbumSimple -> openAlbum(item)
                 is Person -> openPerson(item)
-                is Asset -> openAsset(item)
+                is Asset -> {
+                    // Photos, Random, Memories rows → open as grid
+                    when {
+                        headerTitle.contains("Photos") -> openGridMode(BrowseGridActivity.MODE_PHOTOS, "Photos")
+                        headerTitle.contains("Random") -> openGridMode(BrowseGridActivity.MODE_RANDOM, "Random Photos")
+                        else -> openAsset(item)
+                    }
+                }
                 is SettingsItem -> handleSettingsItem(item)
                 is MemoryCard -> openMemory(item)
             }
@@ -198,6 +208,13 @@ class HomeFragment : BrowseSupportFragment() {
     }
 
     // ── Navigation ──────────────────────────────────────────────────────────
+
+    private fun openGridMode(mode: String, title: String) {
+        startActivity(Intent(requireContext(), BrowseGridActivity::class.java).apply {
+            putExtra(BrowseGridActivity.EXTRA_MODE, mode)
+            putExtra(BrowseGridActivity.EXTRA_TITLE, title)
+        })
+    }
 
     private fun openAlbum(album: AlbumSimple) {
         startActivity(Intent(requireContext(), BrowseGridActivity::class.java).apply {
