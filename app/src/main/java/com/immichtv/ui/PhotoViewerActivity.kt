@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -49,6 +50,7 @@ class PhotoViewerActivity : FragmentActivity() {
     private var slideshowRunning = false
     private var currentAsset: Asset? = null
     private var currentPhotoDate: String? = null  // for jump-to-timeline
+    private var currentFaces: List<AssetFace> = emptyList()  // for person edit
 
     private val handler = Handler(Looper.getMainLooper())
     private val hideOverlayRunnable = Runnable { fadeOutOverlay() }
@@ -95,7 +97,7 @@ class PhotoViewerActivity : FragmentActivity() {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { toggleSlideshow(); true }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BOOKMARK -> { toggleFavorite(); true }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_T -> { jumpToTimeline(); true }
-            KeyEvent.KEYCODE_MENU -> { toggleExifPanel(); true }
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_BUTTON_Y -> { editPerson(); true }
             KeyEvent.KEYCODE_BACK -> {
                 if (showExif) { toggleExifPanel(); true }
                 else if (slideshowRunning) { stopSlideshow(); true }
@@ -167,8 +169,10 @@ class PhotoViewerActivity : FragmentActivity() {
                     }.distinct()
                     facesOverlay.text = labels.joinToString("  \u2022  ")
                     facesOverlay.visibility = View.VISIBLE
+                    currentFaces = faces
                 } else {
                     facesOverlay.visibility = View.GONE
+                    currentFaces = emptyList()
                 }
             } catch (_: Exception) { facesOverlay.visibility = View.GONE }
         }
@@ -204,6 +208,22 @@ class PhotoViewerActivity : FragmentActivity() {
             putExtra(BrowseGridActivity.EXTRA_MODE, BrowseGridActivity.MODE_DATE)
             putExtra(BrowseGridActivity.EXTRA_ID, date)
             putExtra(BrowseGridActivity.EXTRA_TITLE, "Photos from $date")
+        })
+    }
+
+    private fun editPerson() {
+        // Find the first named person in the current photo's faces
+        val face = currentFaces.firstOrNull { it.person?.name?.isNotBlank() == true }
+        val person = face?.person
+        if (person == null) {
+            Toast.makeText(this, "No person detected in this photo", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivity(Intent(this, PersonEditActivity::class.java).apply {
+            putExtra(PersonEditActivity.EXTRA_PERSON_ID, person.id)
+            putExtra(PersonEditActivity.EXTRA_PERSON_NAME, person.name)
+            putExtra(PersonEditActivity.EXTRA_PERSON_BIRTH, person.birthDate ?: "")
+            putExtra(PersonEditActivity.EXTRA_CURRENT_ASSET_ID, assetIds[currentIndex])
         })
     }
 
@@ -261,7 +281,7 @@ class PhotoViewerActivity : FragmentActivity() {
         if (showOverlay) {
             counterOverlay.text = "${currentIndex + 1} / ${assetIds.size}"
             counterOverlay.visibility = View.VISIBLE
-            infoOverlay.text = "\u2190\u2192 Nav  \u2191 EXIF  \u2193 Slideshow  A Fav  B Timeline"
+            infoOverlay.text = "\u2190\u2192 Nav  \u2191 EXIF  \u2193 Slideshow  A Fav  B Timeline  Menu Edit person"
             infoOverlay.visibility = View.VISIBLE
             handler.removeCallbacks(hideOverlayRunnable)
             handler.postDelayed(hideOverlayRunnable, 4000)
