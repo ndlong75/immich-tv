@@ -13,6 +13,7 @@ import com.immichtv.ui.presenters.CardPresenter
 import kotlinx.coroutines.launch
 
 class BrowseGridActivity : FragmentActivity() {
+
     companion object {
         const val EXTRA_MODE = "mode"
         const val EXTRA_ID = "id"
@@ -25,12 +26,13 @@ class BrowseGridActivity : FragmentActivity() {
         const val MODE_SEARCH = "search"
         const val MODE_PHOTOS = "photos"
         const val MODE_RANDOM = "random"
-        const val MODE_DATE = "date"  // jump to specific date
+        const val MODE_DATE = "date"       // Jump to specific date
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         if (savedInstanceState == null) {
             val fragment = AssetGridFragment().apply {
                 arguments = Bundle().apply {
@@ -41,12 +43,14 @@ class BrowseGridActivity : FragmentActivity() {
                 }
             }
             supportFragmentManager.beginTransaction()
-                .replace(R.id.main_frame, fragment).commit()
+                .replace(R.id.main_frame, fragment)
+                .commit()
         }
     }
 }
 
 class AssetGridFragment : VerticalGridSupportFragment() {
+
     companion object {
         private const val NUM_COLUMNS = 5
         private const val BATCH_SIZE = 200
@@ -57,14 +61,18 @@ class AssetGridFragment : VerticalGridSupportFragment() {
     private var currentPage = 1
     private var isLoading = false
     private var hasMore = true
-    private var timelineBucketIndex = 0
-    private var timelineBuckets: List<TimeBucket> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setGridPresenter(VerticalGridPresenter().apply { numberOfColumns = NUM_COLUMNS })
+
+        val gridPresenter = VerticalGridPresenter().apply {
+            numberOfColumns = NUM_COLUMNS
+        }
+        setGridPresenter(gridPresenter)
         adapter = gridAdapter
+
         title = arguments?.getString(BrowseGridActivity.EXTRA_TITLE) ?: "Photos"
+
         setupClickListener()
         setupScrollListener()
         loadAssets()
@@ -79,8 +87,10 @@ class AssetGridFragment : VerticalGridSupportFragment() {
     private fun setupScrollListener() {
         setOnItemViewSelectedListener(OnItemViewSelectedListener { _, item, _, _ ->
             if (item is Asset && !isLoading && hasMore) {
-                val pos = allAssets.indexOfFirst { it.id == item.id }
-                if (pos >= allAssets.size - 20) loadNextBatch()
+                val position = allAssets.indexOfFirst { it.id == item.id }
+                if (position >= allAssets.size - 20) {
+                    loadNextBatch()
+                }
             }
         })
     }
@@ -88,25 +98,40 @@ class AssetGridFragment : VerticalGridSupportFragment() {
     private fun loadAssets() {
         val mode = arguments?.getString(BrowseGridActivity.EXTRA_MODE) ?: return
         val id = arguments?.getString(BrowseGridActivity.EXTRA_ID) ?: ""
+
         when (mode) {
             BrowseGridActivity.MODE_ALBUM -> loadAlbum(id)
-            BrowseGridActivity.MODE_PERSON -> loadPaginated { loadPersonPage(id) }
+            BrowseGridActivity.MODE_PERSON -> loadPaginated(personIds = listOf(id))
             BrowseGridActivity.MODE_MEMORY -> loadMemory(id)
-            BrowseGridActivity.MODE_TIMELINE -> loadTimeline()
-            BrowseGridActivity.MODE_PHOTOS -> loadPaginated { loadPhotosPage() }
-            BrowseGridActivity.MODE_RANDOM -> loadPaginated { loadRandomPage() }
-            BrowseGridActivity.MODE_SEARCH -> loadPaginated { loadSearchPage(id) }
-            BrowseGridActivity.MODE_DATE -> loadDatePhotos(id)
+            BrowseGridActivity.MODE_TIMELINE, BrowseGridActivity.MODE_PHOTOS -> loadPaginated()
+            BrowseGridActivity.MODE_RANDOM -> loadRandom()
+            BrowseGridActivity.MODE_SEARCH -> loadSmartSearch(id)
+            BrowseGridActivity.MODE_DATE -> loadByDate(id)
         }
     }
 
-    // ── Paginated wrapper ───────────────────────────────────────────────
-    private fun loadPaginated(loader: suspend () -> List<Asset>) {
+    // ── Core paginated loader using search/metadata ─────────────────────
+
+    private fun loadPaginated(
+        personIds: List<String>? = null,
+        takenAfter: String? = null,
+        takenBefore: String? = null
+    ) {
         if (isLoading) return
         isLoading = true
         lifecycleScope.launch {
             try {
-                val items = loader()
+                val response = ImmichClient.getApi().searchAssets(
+                    SearchRequest(
+                        size = BATCH_SIZE,
+                        page = currentPage,
+                        order = "desc",
+                        personIds = personIds,
+                        takenAfter = takenAfter,
+                        takenBefore = takenBefore
+                    )
+                )
+                val items = response.assets.items
                 hasMore = items.size >= BATCH_SIZE
                 addAssets(items)
             } catch (e: Exception) { showError(e) }
@@ -114,34 +139,81 @@ class AssetGridFragment : VerticalGridSupportFragment() {
         }
     }
 
-    private suspend fun loadPhotosPage(): List<Asset> {
-        return ImmichClient.getApi().searchAssets(
-            SearchRequest(size = BATCH_SIZE, page = currentPage, order = "desc")
-        ).assets.items
+    private fun loadSmartSearch(query: String) {
+        if (isLoading) return
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                val response = ImmichClient.getApi().smartSearch(
+                    SmartSearchRequest(query = query, size = BATCH_SIZE, page = currentPage)
+                )
+                val items = response.assets.items
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+            } catch (e: Exception) { showError(e) }
+            finally { isLoading = false }
+        }
     }
 
-    private suspend fun loadRandomPage(): List<Asset> {
-        return ImmichClient.getApi().getRandomAssets(BATCH_SIZE)
+    private fun loadRandom() {
+        if (isLoading) return
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                val items = ImmichClient.getApi().getRandomAssets(BATCH_SIZE)
+                // Random always has more
+                hasMore = true
+                addAssets(items)
+            } catch (e: Exception) { showError(e) }
+            finally { isLoading = false }
+        }
     }
 
-    private suspend fun loadPersonPage(personId: String): List<Asset> {
-        return ImmichClient.getApi().searchAssets(
-            SearchRequest(personIds = listOf(personId), size = BATCH_SIZE, page = currentPage, order = "desc")
-        ).assets.items
+    private fun loadByDate(dateStr: String) {
+        // dateStr = "2024-03-15" -> load around that date
+        if (isLoading) return
+        isLoading = true
+        lifecycleScope.launch {
+            try {
+                // Load photos from that date's month
+                val yearMonth = dateStr.take(7) // "2024-03"
+                val takenAfter = "${yearMonth}-01T00:00:00.000Z"
+                val nextMonth = nextMonthStr(yearMonth)
+                val takenBefore = "${nextMonth}-01T00:00:00.000Z"
+
+                val response = ImmichClient.getApi().searchAssets(
+                    SearchRequest(
+                        size = BATCH_SIZE,
+                        page = currentPage,
+                        order = "desc",
+                        takenAfter = takenAfter,
+                        takenBefore = takenBefore
+                    )
+                )
+                val items = response.assets.items
+                hasMore = items.size >= BATCH_SIZE
+                addAssets(items)
+            } catch (e: Exception) { showError(e) }
+            finally { isLoading = false }
+        }
     }
 
-    private suspend fun loadSearchPage(query: String): List<Asset> {
-        return ImmichClient.getApi().smartSearch(
-            SmartSearchRequest(query = query, size = BATCH_SIZE, page = currentPage)
-        ).assets.items
+    private fun nextMonthStr(yearMonth: String): String {
+        val parts = yearMonth.split("-")
+        var year = parts[0].toInt()
+        var month = parts[1].toInt() + 1
+        if (month > 12) { month = 1; year++ }
+        return "$year-${month.toString().padStart(2, '0')}"
     }
 
-    // ── Non-paginated ───────────────────────────────────────────────────
+    // ── Non-paginated loaders ───────────────────────────────────────────
+
     private fun loadAlbum(albumId: String) {
         lifecycleScope.launch {
             try {
                 val album = ImmichClient.getApi().getAlbumDetail(albumId)
-                hasMore = false; addAssets(album.assets)
+                hasMore = false
+                addAssets(album.assets)
             } catch (e: Exception) { showError(e) }
         }
     }
@@ -150,83 +222,43 @@ class AssetGridFragment : VerticalGridSupportFragment() {
         lifecycleScope.launch {
             try {
                 val memories = ImmichClient.getApi().getMemories()
-                hasMore = false; addAssets(memories.find { it.id == memoryId }?.assets ?: emptyList())
+                hasMore = false
+                addAssets(memories.find { it.id == memoryId }?.assets ?: emptyList())
             } catch (e: Exception) { showError(e) }
         }
     }
 
-    private fun loadTimeline() {
-        if (isLoading) return
-        isLoading = true
-        lifecycleScope.launch {
-            try {
-                if (timelineBuckets.isEmpty()) {
-                    timelineBuckets = ImmichClient.getApi().getTimeBuckets(size = "MONTH")
-                }
-                val batch = timelineBuckets.drop(timelineBucketIndex).take(3)
-                val results = mutableListOf<Asset>()
-                for (bucket in batch) {
-                    try {
-                        results.addAll(ImmichClient.getApi().getTimeBucket(
-                            size = "MONTH", timeBucket = bucket.timeBucket
-                        ))
-                    } catch (_: Exception) {}
-                }
-                timelineBucketIndex += batch.size
-                hasMore = timelineBucketIndex < timelineBuckets.size
-                addAssets(results)
-            } catch (e: Exception) { showError(e) }
-            finally { isLoading = false }
-        }
-    }
+    // ── Next batch (triggered by scroll) ────────────────────────────────
 
-    private fun loadDatePhotos(dateStr: String) {
-        // dateStr = "YYYY-MM-DD", load photos from that month
-        lifecycleScope.launch {
-            try {
-                val yearMonth = dateStr.take(7) // "YYYY-MM"
-                val bucketStr = "${yearMonth}-01T00:00:00.000Z"
-                val assets = ImmichClient.getApi().getTimeBucket(
-                    size = "MONTH", timeBucket = bucketStr
-                )
-                hasMore = false; addAssets(assets)
-            } catch (e: Exception) {
-                // Fallback: search by date range
-                try {
-                    val response = ImmichClient.getApi().searchAssets(
-                        SearchRequest(
-                            takenAfter = "${dateStr}T00:00:00.000Z",
-                            takenBefore = "${dateStr}T23:59:59.999Z",
-                            size = BATCH_SIZE, order = "desc"
-                        )
-                    )
-                    hasMore = false; addAssets(response.assets.items)
-                } catch (e2: Exception) { showError(e2) }
-            }
-        }
-    }
-
-    // ── Next batch ──────────────────────────────────────────────────────
     private fun loadNextBatch() {
         val mode = arguments?.getString(BrowseGridActivity.EXTRA_MODE) ?: return
         val id = arguments?.getString(BrowseGridActivity.EXTRA_ID) ?: ""
         currentPage++
+
         when (mode) {
-            BrowseGridActivity.MODE_PHOTOS -> loadPaginated { loadPhotosPage() }
-            BrowseGridActivity.MODE_RANDOM -> loadPaginated { loadRandomPage() }
-            BrowseGridActivity.MODE_PERSON -> loadPaginated { loadPersonPage(id) }
-            BrowseGridActivity.MODE_SEARCH -> loadPaginated { loadSearchPage(id) }
-            BrowseGridActivity.MODE_TIMELINE -> loadTimeline()
+            BrowseGridActivity.MODE_PHOTOS, BrowseGridActivity.MODE_TIMELINE -> loadPaginated()
+            BrowseGridActivity.MODE_RANDOM -> loadRandom()
+            BrowseGridActivity.MODE_PERSON -> loadPaginated(personIds = listOf(id))
+            BrowseGridActivity.MODE_SEARCH -> loadSmartSearch(id)
+            BrowseGridActivity.MODE_DATE -> loadByDate(id)
         }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
     private fun addAssets(newAssets: List<Asset>) {
         val existingIds = allAssets.map { it.id }.toSet()
         val unique = newAssets.filter { it.id !in existingIds }
         allAssets.addAll(unique)
         unique.forEach { gridAdapter.add(it) }
-        if (allAssets.isEmpty()) Toast.makeText(requireContext(), "No photos found", Toast.LENGTH_SHORT).show()
+
+        if (allAssets.isEmpty()) {
+            Toast.makeText(requireContext(), "No photos found", Toast.LENGTH_SHORT).show()
+        }
+        updateTitle()
+    }
+
+    private fun updateTitle() {
         val baseTitle = arguments?.getString(BrowseGridActivity.EXTRA_TITLE) ?: "Photos"
         title = "$baseTitle (${allAssets.size}${if (hasMore) "+" else ""})"
     }
@@ -237,7 +269,8 @@ class AssetGridFragment : VerticalGridSupportFragment() {
 
     private fun openAsset(asset: Asset) {
         val imageAssets = allAssets.filter { it.type == AssetType.IMAGE }
-        val idx = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
+        val imageIndex = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
+
         if (asset.type == AssetType.VIDEO) {
             startActivity(Intent(requireContext(), VideoPlayerActivity::class.java).apply {
                 putExtra(VideoPlayerActivity.EXTRA_ASSET_ID, asset.id)
@@ -246,8 +279,11 @@ class AssetGridFragment : VerticalGridSupportFragment() {
         } else {
             startActivity(Intent(requireContext(), PhotoViewerActivity::class.java).apply {
                 putExtra(PhotoViewerActivity.EXTRA_ASSET_ID, asset.id)
-                putStringArrayListExtra(PhotoViewerActivity.EXTRA_ASSET_IDS, ArrayList(imageAssets.map { it.id }))
-                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, idx)
+                putStringArrayListExtra(
+                    PhotoViewerActivity.EXTRA_ASSET_IDS,
+                    ArrayList(imageAssets.map { it.id })
+                )
+                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, imageIndex)
             })
         }
     }

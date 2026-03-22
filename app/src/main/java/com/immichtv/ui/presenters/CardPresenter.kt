@@ -14,6 +14,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.signature.ObjectKey
 import com.immichtv.api.*
 import com.immichtv.ui.MemoryCard
+import com.immichtv.ui.NavItem
 
 class CardPresenter(private val baseUrl: String) : Presenter() {
 
@@ -41,64 +42,58 @@ class CardPresenter(private val baseUrl: String) : Presenter() {
             is AlbumSimple -> {
                 cardView.titleText = item.albumName
                 cardView.contentText = "${item.assetCount} items"
-                loadImage(cardView, item.albumThumbnailAssetId?.let { ImmichClient.thumbnailUrl(it) }, item.id)
+                if (item.albumThumbnailAssetId != null) {
+                    loadImage(cardView, ImmichClient.thumbnailUrl(item.albumThumbnailAssetId), item.albumThumbnailAssetId)
+                } else {
+                    setPlaceholder(cardView)
+                }
             }
+
             is Person -> {
                 cardView.titleText = item.name
-                val ageStr = item.birthDate?.let { calcAge(it) }
-                val countStr = if (item.assetCount > 0) "${item.assetCount} photos" else ""
-                cardView.contentText = listOfNotNull(ageStr, countStr).joinToString(" \u2022 ")
-                loadImage(cardView, ImmichClient.personThumbnailUrl(item.id), item.id)
+                cardView.contentText = if (item.assetCount > 0) "${item.assetCount} photos" else ""
+                loadImage(cardView, ImmichClient.personThumbnailUrl(item.id), "person_${item.id}")
             }
+
             is Asset -> {
                 cardView.titleText = item.originalFileName
                 cardView.contentText = when (item.type) {
                     AssetType.VIDEO -> "\u25B6 Video"
                     else -> item.localDateTime?.take(10) ?: ""
                 }
-                // Use asset ID as signature to prevent Glide from showing cached wrong image
+                // Use asset ID as signature to ensure correct image mapping
                 loadImage(cardView, ImmichClient.thumbnailSmallUrl(item.id), item.id)
             }
+
             is MemoryCard -> {
                 cardView.titleText = item.title
                 cardView.contentText = "${item.assets.size} memories"
-                loadImage(cardView, item.thumbnailAssetId?.let { ImmichClient.thumbnailUrl(it) }, item.id)
+                if (item.thumbnailAssetId != null) {
+                    loadImage(cardView, ImmichClient.thumbnailUrl(item.thumbnailAssetId), "mem_${item.thumbnailAssetId}")
+                } else {
+                    setPlaceholder(cardView)
+                }
+            }
+
+            is NavItem -> {
+                cardView.titleText = item.title
+                cardView.contentText = item.description
+                cardView.mainImageView.setImageDrawable(
+                    ColorDrawable(Color.parseColor("#0f3460"))
+                )
             }
         }
     }
 
     override fun onUnbindViewHolder(viewHolder: ViewHolder) {
         val cardView = viewHolder.view as ImageCardView
-        // Clear Glide to prevent stale images on recycled views
+        // Cancel any pending Glide loads to prevent wrong image appearing
         Glide.with(cardView.context).clear(cardView.mainImageView)
         cardView.badgeImage = null
         cardView.mainImage = null
     }
 
-    private fun calcAge(birthDate: String): String? {
-        return try {
-            val parts = birthDate.take(10).split("-")
-            if (parts.size < 3) return null
-            val birthYear = parts[0].toInt()
-            val birthMonth = parts[1].toInt()
-            val birthDay = parts[2].toInt()
-            val now = java.util.Calendar.getInstance()
-            var age = now.get(java.util.Calendar.YEAR) - birthYear
-            if (now.get(java.util.Calendar.MONTH) + 1 < birthMonth ||
-                (now.get(java.util.Calendar.MONTH) + 1 == birthMonth &&
-                 now.get(java.util.Calendar.DAY_OF_MONTH) < birthDay)) {
-                age--
-            }
-            if (age >= 0) "${age}y" else null
-        } catch (_: Exception) { null }
-    }
-
-    private fun loadImage(cardView: ImageCardView, url: String?, uniqueId: String) {
-        if (url == null) {
-            cardView.mainImageView.setImageDrawable(ColorDrawable(Color.parseColor("#2d3561")))
-            return
-        }
-
+    private fun loadImage(cardView: ImageCardView, url: String, cacheKey: String) {
         val headers = ImmichClient.authHeaders()
         val glideUrl = GlideUrl(url, LazyHeaders.Builder().apply {
             headers.forEach { (key, value) -> addHeader(key, value) }
@@ -106,15 +101,21 @@ class CardPresenter(private val baseUrl: String) : Presenter() {
 
         Glide.with(cardView.context)
             .load(glideUrl)
-            .signature(ObjectKey(uniqueId))  // Prevent cache mix-ups between recycled views
+            .signature(ObjectKey(cacheKey))  // Unique signature prevents image reuse across cards
             .transform(CenterCrop(), RoundedCorners(12))
             .placeholder(ColorDrawable(Color.parseColor("#2d3561")))
             .error(ColorDrawable(Color.parseColor("#4a1942")))
             .into(cardView.mainImageView)
     }
+
+    private fun setPlaceholder(cardView: ImageCardView) {
+        cardView.mainImageView.setImageDrawable(
+            ColorDrawable(Color.parseColor("#2d3561"))
+        )
+    }
 }
 
-// ── Icon Card Presenter for nav items ───────────────────────────────────
+// ── Simple icon card for Browse/Settings nav items ──────────────────────
 
 class IconCardPresenter : Presenter() {
 
@@ -132,7 +133,7 @@ class IconCardPresenter : Presenter() {
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         val cardView = viewHolder.view as ImageCardView
         when (item) {
-            is com.immichtv.ui.NavItem -> {
+            is NavItem -> {
                 cardView.titleText = item.title
                 cardView.contentText = item.description
                 cardView.mainImageView.setImageDrawable(
