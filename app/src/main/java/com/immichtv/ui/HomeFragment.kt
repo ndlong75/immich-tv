@@ -165,8 +165,8 @@ class HomeFragment : BrowseSupportFragment() {
                 if (people.isNotEmpty()) {
                     val cardPresenter = CardPresenter(ImmichClient.baseUrl)
                     val listAdapter = ArrayObjectAdapter(cardPresenter)
-                    // Immich API returns people sorted by most assets first by default
-                    people.forEach { person ->
+                    // Sort by most photos first
+                    people.sortedByDescending { it.assetCount }.forEach { person ->
                         listAdapter.add(person)
                     }
                     val header = HeaderItem(ROW_PEOPLE, "\uD83D\uDC64 People")

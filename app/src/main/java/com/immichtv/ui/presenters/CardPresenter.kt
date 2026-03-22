@@ -52,7 +52,7 @@ class CardPresenter(private val baseUrl: String) : Presenter() {
 
             is Person -> {
                 cardView.titleText = item.name
-                cardView.contentText = ""
+                cardView.contentText = if (item.assetCount > 0) "${item.assetCount} photos" else ""
                 val thumbUrl = ImmichClient.personThumbnailUrl(item.id)
                 loadImage(cardView, thumbUrl)
             }

@@ -106,32 +106,39 @@ class PhotoViewerActivity : FragmentActivity() {
 
     private fun loadCurrentPhoto() {
         val assetId = assetIds[currentIndex]
-        val url = ImmichClient.thumbnailUrl(assetId) // Use preview size for speed
 
         val headers = ImmichClient.authHeaders()
-        val glideUrl = GlideUrl(url, LazyHeaders.Builder().apply {
+
+        // Build URLs
+        val previewUrl = ImmichClient.thumbnailUrl(assetId)
+        val originalUrl = ImmichClient.originalUrl(assetId)
+
+        val previewGlideUrl = GlideUrl(previewUrl, LazyHeaders.Builder().apply {
             headers.forEach { (key, value) -> addHeader(key, value) }
         }.build())
 
+        val originalGlideUrl = GlideUrl(originalUrl, LazyHeaders.Builder().apply {
+            headers.forEach { (key, value) -> addHeader(key, value) }
+        }.build())
+
+        // Cancel any previous loads on this ImageView first
+        Glide.with(this).clear(imageView)
+
+        // Single chained load: show preview thumbnail immediately,
+        // then swap to original when it's ready. No race condition.
         Glide.with(this)
-            .load(glideUrl)
+            .load(originalGlideUrl)
+            .thumbnail(
+                Glide.with(this)
+                    .load(previewGlideUrl)
+                    .transform(FitCenter())
+            )
             .transform(FitCenter())
             .placeholder(ColorDrawable(Color.BLACK))
             .error(ColorDrawable(Color.DKGRAY))
             .into(imageView)
 
         updateOverlay()
-
-        // Also preload the original resolution in background
-        val originalUrl = ImmichClient.originalUrl(assetId)
-        val originalGlideUrl = GlideUrl(originalUrl, LazyHeaders.Builder().apply {
-            headers.forEach { (key, value) -> addHeader(key, value) }
-        }.build())
-
-        Glide.with(this)
-            .load(originalGlideUrl)
-            .transform(FitCenter())
-            .into(imageView)
     }
 
     private fun updateOverlay() {

@@ -56,7 +56,8 @@ data class Person(
     val id: String,
     val name: String,
     val thumbnailPath: String?,
-    val birthDate: String?
+    val birthDate: String?,
+    val assetCount: Int = 0    // Immich returns this — used for sorting
 )
 
 // ── Memories ────────────────────────────────────────────────────────────────
