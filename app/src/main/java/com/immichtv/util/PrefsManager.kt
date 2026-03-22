@@ -7,7 +7,9 @@ object PrefsManager {
 
     private const val PREFS_NAME = "immich_tv_prefs"
     private const val KEY_SERVER_URL = "server_url"
-    private const val KEY_API_KEY = "api_key"
+    private const val KEY_ACCESS_TOKEN = "access_token"
+    private const val KEY_USER_EMAIL = "user_email"
+    private const val KEY_USER_NAME = "user_name"
     private const val KEY_SLIDESHOW_INTERVAL = "slideshow_interval"
     private const val KEY_SHOW_INFO_OVERLAY = "show_info_overlay"
 
@@ -21,9 +23,17 @@ object PrefsManager {
         get() = prefs.getString(KEY_SERVER_URL, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SERVER_URL, value).apply()
 
-    var apiKey: String
-        get() = prefs.getString(KEY_API_KEY, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_API_KEY, value).apply()
+    var accessToken: String
+        get() = prefs.getString(KEY_ACCESS_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_ACCESS_TOKEN, value).apply()
+
+    var userEmail: String
+        get() = prefs.getString(KEY_USER_EMAIL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_USER_EMAIL, value).apply()
+
+    var userName: String
+        get() = prefs.getString(KEY_USER_NAME, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_USER_NAME, value).apply()
 
     var slideshowIntervalSeconds: Int
         get() = prefs.getInt(KEY_SLIDESHOW_INTERVAL, 5)
@@ -34,7 +44,7 @@ object PrefsManager {
         set(value) = prefs.edit().putBoolean(KEY_SHOW_INFO_OVERLAY, value).apply()
 
     fun isConfigured(): Boolean {
-        return serverUrl.isNotBlank() && apiKey.isNotBlank()
+        return serverUrl.isNotBlank() && accessToken.isNotBlank()
     }
 
     fun clear() {

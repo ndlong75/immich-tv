@@ -10,21 +10,51 @@ import java.util.concurrent.TimeUnit
 object ImmichClient {
 
     private var api: ImmichApi? = null
+    private var unauthApi: ImmichApi? = null  // For login (no auth header)
     private var currentBaseUrl: String = ""
-    private var currentApiKey: String = ""
+    private var currentToken: String = ""
 
     val baseUrl: String get() = currentBaseUrl
 
-    fun configure(baseUrl: String, apiKey: String) {
+    /** Create an unauthenticated client for login only */
+    fun configureForLogin(baseUrl: String) {
         val normalizedUrl = baseUrl.trimEnd('/') + "/"
-        if (normalizedUrl == currentBaseUrl && apiKey == currentApiKey && api != null) return
+        currentBaseUrl = normalizedUrl
+
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl(normalizedUrl)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        unauthApi = retrofit.create(ImmichApi::class.java)
+    }
+
+    fun getUnauthApi(): ImmichApi {
+        return unauthApi ?: throw IllegalStateException("Call configureForLogin first")
+    }
+
+    /** Configure authenticated client with Bearer token */
+    fun configure(baseUrl: String, accessToken: String) {
+        val normalizedUrl = baseUrl.trimEnd('/') + "/"
+        if (normalizedUrl == currentBaseUrl && accessToken == currentToken && api != null) return
 
         currentBaseUrl = normalizedUrl
-        currentApiKey = apiKey
+        currentToken = accessToken
 
         val authInterceptor = Interceptor { chain ->
             val request = chain.request().newBuilder()
-                .addHeader("x-api-key", apiKey)
+                .addHeader("Authorization", "Bearer $accessToken")
                 .addHeader("Accept", "application/json")
                 .build()
             chain.proceed(request)
@@ -53,7 +83,7 @@ object ImmichClient {
 
     fun getApi(): ImmichApi {
         return api ?: throw IllegalStateException(
-            "ImmichClient not configured. Call configure(baseUrl, apiKey) first."
+            "ImmichClient not configured. Login first."
         )
     }
 
@@ -79,9 +109,9 @@ object ImmichClient {
         return "${currentBaseUrl}api/people/$personId/thumbnail"
     }
 
-    /** Returns an OkHttp-compatible header map for Glide / ExoPlayer */
+    /** Returns auth headers for Glide / ExoPlayer */
     fun authHeaders(): Map<String, String> {
-        return mapOf("x-api-key" to currentApiKey)
+        return mapOf("Authorization" to "Bearer $currentToken")
     }
 
     fun isConfigured(): Boolean = api != null

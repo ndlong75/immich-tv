@@ -4,6 +4,13 @@ import retrofit2.http.*
 
 interface ImmichApi {
 
+    // ── Auth ─────────────────────────────────────────────────────────────
+
+    @POST("api/auth/login")
+    suspend fun login(
+        @Body request: LoginRequest
+    ): LoginResponse
+
     // ── Server ──────────────────────────────────────────────────────────────
 
     @GET("api/server/version")

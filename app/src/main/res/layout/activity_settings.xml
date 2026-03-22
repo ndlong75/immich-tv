@@ -16,7 +16,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Immich TV Setup"
+            android:text="Immich TV Login"
             android:textColor="#FFFFFF"
             android:textSize="32sp"
             android:fontFamily="sans-serif-medium"
@@ -25,7 +25,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Connect to your Immich server"
+            android:text="Sign in to your Immich server"
             android:textColor="#9CA3AF"
             android:textSize="18sp"
             android:layout_marginBottom="40dp" />
@@ -56,23 +56,49 @@
             android:singleLine="true"
             android:layout_marginBottom="24dp" />
 
-        <!-- API Key -->
+        <!-- Email -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="API Key"
+            android:text="Email"
             android:textColor="#93C5FD"
             android:textSize="16sp"
             android:layout_marginBottom="8dp" />
 
         <EditText
-            android:id="@+id/input_api_key"
+            android:id="@+id/input_email"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:background="#1E293B"
             android:textColor="#FFFFFF"
             android:textColorHint="#6B7280"
-            android:hint="Your Immich API key"
+            android:hint="your@email.com"
+            android:inputType="textEmailAddress"
+            android:textSize="18sp"
+            android:paddingHorizontal="16dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:imeOptions="actionNext"
+            android:singleLine="true"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Password -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Password"
+            android:textColor="#93C5FD"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/input_password"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="#1E293B"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7280"
+            android:hint="Your password"
             android:inputType="textPassword"
             android:textSize="18sp"
             android:paddingHorizontal="16dp"
@@ -80,45 +106,32 @@
             android:focusableInTouchMode="true"
             android:imeOptions="actionDone"
             android:singleLine="true"
-            android:layout_marginBottom="12dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Find your API key in Immich → Account Settings → API Keys"
-            android:textColor="#6B7280"
-            android:textSize="14sp"
             android:layout_marginBottom="32dp" />
 
-        <!-- Buttons -->
-        <LinearLayout
+        <!-- Login Button -->
+        <Button
+            android:id="@+id/btn_login"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="24dp">
+            android:layout_height="56dp"
+            android:text="Sign In"
+            android:textSize="18sp"
+            android:backgroundTint="#3B82F6"
+            android:textColor="#FFFFFF"
+            android:focusable="true"
+            android:layout_marginBottom="16dp" />
 
-            <Button
-                android:id="@+id/btn_test"
-                android:layout_width="200dp"
-                android:layout_height="56dp"
-                android:text="Test Connection"
-                android:textSize="16sp"
-                android:backgroundTint="#3B82F6"
-                android:textColor="#FFFFFF"
-                android:focusable="true"
-                android:layout_marginEnd="16dp" />
-
-            <Button
-                android:id="@+id/btn_save"
-                android:layout_width="200dp"
-                android:layout_height="56dp"
-                android:text="Save &amp; Go Back"
-                android:textSize="16sp"
-                android:backgroundTint="#10B981"
-                android:textColor="#FFFFFF"
-                android:focusable="true" />
-        </LinearLayout>
+        <!-- Logout Button (only visible when logged in) -->
+        <Button
+            android:id="@+id/btn_logout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Sign Out"
+            android:textSize="16sp"
+            android:backgroundTint="#EF4444"
+            android:textColor="#FFFFFF"
+            android:focusable="true"
+            android:visibility="gone"
+            android:layout_marginBottom="24dp" />
 
         <!-- Status -->
         <TextView

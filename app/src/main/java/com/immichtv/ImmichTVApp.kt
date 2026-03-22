@@ -10,9 +10,9 @@ class ImmichTVApp : Application() {
         super.onCreate()
         PrefsManager.init(this)
 
-        // Initialize API client if already configured
+        // Initialize API client if already logged in
         if (PrefsManager.isConfigured()) {
-            ImmichClient.configure(PrefsManager.serverUrl, PrefsManager.apiKey)
+            ImmichClient.configure(PrefsManager.serverUrl, PrefsManager.accessToken)
         }
     }
 }

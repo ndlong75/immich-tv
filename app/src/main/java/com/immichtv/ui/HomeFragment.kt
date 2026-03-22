@@ -72,7 +72,7 @@ class HomeFragment : BrowseSupportFragment() {
         if (!PrefsManager.isConfigured()) return
 
         try {
-            ImmichClient.configure(PrefsManager.serverUrl, PrefsManager.apiKey)
+            ImmichClient.configure(PrefsManager.serverUrl, PrefsManager.accessToken)
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
             return
