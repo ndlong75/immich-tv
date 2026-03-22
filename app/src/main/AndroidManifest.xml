@@ -114,11 +114,6 @@
             android:name=".ui.ExploreActivity"
             android:screenOrientation="landscape" />
 
-        <!-- Folder Browser -->
-        <activity
-            android:name=".ui.FolderBrowserActivity"
-            android:screenOrientation="landscape" />
-
         <!-- Map / Locations -->
         <activity
             android:name=".ui.MapActivity"
