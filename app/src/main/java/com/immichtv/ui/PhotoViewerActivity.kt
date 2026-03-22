@@ -188,23 +188,20 @@ class PhotoViewerActivity : FragmentActivity() {
         val assetId = assetIds[currentIndex]
         val headers = ImmichClient.authHeaders()
 
+        // Use PREVIEW size only — original files can be 20-50MB RAW,
+        // too slow for Fire Stick. Preview is 1440px which looks great on TV.
         val previewUrl = ImmichClient.thumbnailUrl(assetId)
-        val originalUrl = ImmichClient.originalUrl(assetId)
 
-        val previewGlideUrl = GlideUrl(previewUrl, LazyHeaders.Builder().apply {
-            headers.forEach { (k, v) -> addHeader(k, v) }
-        }.build())
-        val originalGlideUrl = GlideUrl(originalUrl, LazyHeaders.Builder().apply {
+        val glideUrl = GlideUrl(previewUrl, LazyHeaders.Builder().apply {
             headers.forEach { (k, v) -> addHeader(k, v) }
         }.build())
 
         Glide.with(this).clear(imageView)
         Glide.with(this)
-            .load(originalGlideUrl)
-            .thumbnail(Glide.with(this).load(previewGlideUrl).transform(FitCenter()))
+            .load(glideUrl)
             .transform(FitCenter())
             .placeholder(ColorDrawable(Color.BLACK))
-            .error(ColorDrawable(Color.DKGRAY))
+            .error(ColorDrawable(Color.parseColor("#1a1a2e")))
             .into(imageView)
 
         // Update counter

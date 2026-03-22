@@ -38,6 +38,10 @@ class CardPresenter(private val baseUrl: String) : Presenter() {
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         val cardView = viewHolder.view as ImageCardView
 
+        // CRITICAL: Clear any pending/completed Glide load from recycled view FIRST
+        Glide.with(cardView.context).clear(cardView.mainImageView)
+        cardView.mainImageView.setImageDrawable(ColorDrawable(Color.parseColor("#2d3561")))
+
         when (item) {
             is AlbumSimple -> {
                 cardView.titleText = item.albumName

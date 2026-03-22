@@ -109,13 +109,20 @@ class SearchResultsFragment : VerticalGridSupportFragment() {
                 putExtra(VideoPlayerActivity.EXTRA_TITLE, asset.originalFileName)
             })
         } else {
+            // Limit IDs to prevent TransactionTooLargeException
+            val windowSize = 50
+            val windowStart = (imageIndex - windowSize / 2).coerceAtLeast(0)
+            val windowEnd = (windowStart + windowSize).coerceAtMost(imageAssets.size)
+            val windowIds = imageAssets.subList(windowStart, windowEnd).map { it.id }
+            val adjustedIndex = imageIndex - windowStart
+
             startActivity(Intent(requireContext(), PhotoViewerActivity::class.java).apply {
                 putExtra(PhotoViewerActivity.EXTRA_ASSET_ID, asset.id)
                 putStringArrayListExtra(
                     PhotoViewerActivity.EXTRA_ASSET_IDS,
-                    ArrayList(imageAssets.map { it.id })
+                    ArrayList(windowIds)
                 )
-                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, imageIndex)
+                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, adjustedIndex)
             })
         }
     }
