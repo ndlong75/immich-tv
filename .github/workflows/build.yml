@@ -24,16 +24,18 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - name: Create config files
+      - name: Create google-services.json
+        run: echo '{"project_info":{"project_id":"immich-tv-dummy","project_number":"000000000000","firebase_url":"https://immich-tv-dummy.firebaseio.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"nl.giejay.android.tv.immich"}},"api_key":[{"current_key":"AIzaSyDummyKeyForBuildOnly000000000"}]}],"configuration_version":"1"}' > app/google-services.json
+
+      - name: Create strings_other.xml
         run: |
-          cp app/google-services.example app/google-services.json
           mkdir -p app/src/main/res/values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="host_name">http://192.168.10.2:2283</string>\n    <string name="api_key">demo</string>\n    <string name="authentication_url">https://example.com</string>\n</resources>\n' > app/src/main/res/values/strings_other.xml
 
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
