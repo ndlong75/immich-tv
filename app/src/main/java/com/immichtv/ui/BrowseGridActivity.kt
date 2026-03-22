@@ -126,7 +126,6 @@ class AssetGridFragment : VerticalGridSupportFragment() {
     }
 
     private fun openAsset(asset: Asset) {
-        val index = assets.indexOf(asset)
         if (asset.type == AssetType.VIDEO) {
             val intent = Intent(requireContext(), VideoPlayerActivity::class.java).apply {
                 putExtra(VideoPlayerActivity.EXTRA_ASSET_ID, asset.id)
@@ -134,13 +133,15 @@ class AssetGridFragment : VerticalGridSupportFragment() {
             }
             startActivity(intent)
         } else {
+            val imageAssets = assets.filter { it.type == AssetType.IMAGE }
+            val imageIndex = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
             val intent = Intent(requireContext(), PhotoViewerActivity::class.java).apply {
                 putExtra(PhotoViewerActivity.EXTRA_ASSET_ID, asset.id)
                 putStringArrayListExtra(
                     PhotoViewerActivity.EXTRA_ASSET_IDS,
-                    ArrayList(assets.filter { it.type == AssetType.IMAGE }.map { it.id })
+                    ArrayList(imageAssets.map { it.id })
                 )
-                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, index)
+                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, imageIndex)
             }
             startActivity(intent)
         }
