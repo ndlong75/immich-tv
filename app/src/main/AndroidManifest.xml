@@ -99,14 +99,9 @@
             android:name=".ui.MapActivity"
             android:screenOrientation="landscape" />
 
-        <!-- Explore (Places, Things) -->
+        <!-- Person Edit -->
         <activity
-            android:name=".ui.ExploreActivity"
-            android:screenOrientation="landscape" />
-
-        <!-- Map / Locations -->
-        <activity
-            android:name=".ui.MapActivity"
+            android:name=".ui.PersonEditActivity"
             android:screenOrientation="landscape" />
 
     </application>

@@ -43,9 +43,8 @@ class HomeFragment : BrowseSupportFragment() {
     }
 
     private fun setupEventListeners() {
-        // When user clicks on a header (sidebar item), open a grid
+        // Click: navigate into content
         onItemViewClickedListener = OnItemViewClickedListener { _, item, _, row ->
-            val headerTitle = (row as? ListRow)?.headerItem?.name ?: ""
             when (item) {
                 is NavItem -> handleNavItem(item)
                 is AlbumSimple -> openAlbum(item)
@@ -54,6 +53,11 @@ class HomeFragment : BrowseSupportFragment() {
                 is MemoryCard -> openMemory(item)
             }
         }
+
+        // Long-press: edit person (set name, birthday, photo)
+        setOnItemViewSelectedListener(OnItemViewSelectedListener { _, item, _, _ ->
+            // We'll use the MENU key instead for edit — see onKeyDown below
+        })
     }
 
     fun refreshData() {
