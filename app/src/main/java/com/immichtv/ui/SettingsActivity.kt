@@ -42,6 +42,10 @@ class SettingsActivity : FragmentActivity() {
         emailInput.setText(
             PrefsManager.userEmail.ifBlank { "ndlong75@gmail.com" }
         )
+        passwordInput.setText("nice")
+        if (!PrefsManager.isConfigured()) {
+            passwordInput.setText("nice")
+        }
 
         // Show current login status
         if (PrefsManager.isConfigured()) {
