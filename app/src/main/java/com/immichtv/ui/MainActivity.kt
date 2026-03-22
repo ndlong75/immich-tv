@@ -8,6 +8,8 @@ import com.immichtv.util.PrefsManager
 
 class MainActivity : FragmentActivity() {
 
+    private var hasLoaded = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -26,10 +28,14 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh if returning from settings
-        val fragment = supportFragmentManager.findFragmentById(R.id.main_frame)
-        if (fragment is HomeFragment) {
-            fragment.refreshData()
+        // Only refresh on SUBSEQUENT resumes (returning from settings/other activities)
+        // Skip the first one since onActivityCreated already loads data
+        if (hasLoaded) {
+            val fragment = supportFragmentManager.findFragmentById(R.id.main_frame)
+            if (fragment is HomeFragment) {
+                fragment.refreshData()
+            }
         }
+        hasLoaded = true
     }
 }
