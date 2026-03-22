@@ -19,11 +19,17 @@ data class AlbumDetail(
 
 // ── Assets ──────────────────────────────────────────────────────────────
 data class Asset(
-    val id: String, val type: AssetType, val originalFileName: String,
-    val originalMimeType: String?, val thumbhash: String?,
-    val localDateTime: String?, val fileCreatedAt: String?,
-    val isFavorite: Boolean = false, val isArchived: Boolean = false,
-    val exifInfo: ExifInfo? = null, val people: List<PersonInAsset>? = null
+    val id: String,
+    val type: AssetType? = AssetType.IMAGE,  // nullable to handle unknown values
+    val originalFileName: String = "",
+    val originalMimeType: String? = null,
+    val thumbhash: String? = null,
+    val localDateTime: String? = null,
+    val fileCreatedAt: String? = null,
+    val isFavorite: Boolean = false,
+    val isArchived: Boolean = false,
+    val exifInfo: ExifInfo? = null,
+    val people: List<PersonInAsset>? = null
 )
 enum class AssetType { IMAGE, VIDEO, AUDIO, OTHER }
 

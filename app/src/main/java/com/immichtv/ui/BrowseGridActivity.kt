@@ -275,10 +275,10 @@ class AssetGridFragment : VerticalGridSupportFragment() {
                 putExtra(VideoPlayerActivity.EXTRA_TITLE, asset.originalFileName)
             })
         } else {
-            // Put assets into shared AssetStore (avoids Intent size limits)
-            val imageAssets = allAssets.filter { it.type == AssetType.IMAGE }
-            val imageIndex = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
-            AssetStore.set(imageAssets, imageIndex)
+            // Treat anything that's NOT a video as viewable (IMAGE, null, OTHER, AUDIO)
+            val viewableAssets = allAssets.filter { it.type != AssetType.VIDEO }
+            val idx = viewableAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
+            AssetStore.set(viewableAssets, idx)
 
             startActivity(Intent(requireContext(), PhotoViewerActivity::class.java).apply {
                 putExtra(PhotoViewerActivity.EXTRA_ASSET_ID, asset.id)
