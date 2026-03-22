@@ -52,7 +52,8 @@ class CardPresenter(private val baseUrl: String) : Presenter() {
             is Person -> {
                 cardView.titleText = item.name
                 cardView.contentText = if (item.assetCount > 0) "${item.assetCount} photos" else ""
-                loadImage(cardView, ImmichClient.personThumbnailUrl(item.id), "person_${item.id}")
+                val url = "${ImmichClient.baseUrl}api/people/${item.id}/thumbnail"
+                loadImage(cardView, url, "person_${item.id}", fitCenter = true)
             }
 
             is Asset -> {
@@ -93,19 +94,24 @@ class CardPresenter(private val baseUrl: String) : Presenter() {
         cardView.mainImage = null
     }
 
-    private fun loadImage(cardView: ImageCardView, url: String, cacheKey: String) {
+    private fun loadImage(cardView: ImageCardView, url: String, cacheKey: String, fitCenter: Boolean = false) {
         val headers = ImmichClient.authHeaders()
         val glideUrl = GlideUrl(url, LazyHeaders.Builder().apply {
             headers.forEach { (key, value) -> addHeader(key, value) }
         }.build())
 
-        Glide.with(cardView.context)
+        val builder = Glide.with(cardView.context)
             .load(glideUrl)
-            .signature(ObjectKey(cacheKey))  // Unique signature prevents image reuse across cards
-            .transform(CenterCrop(), RoundedCorners(12))
+            .signature(ObjectKey(cacheKey))
             .placeholder(ColorDrawable(Color.parseColor("#2d3561")))
             .error(ColorDrawable(Color.parseColor("#4a1942")))
-            .into(cardView.mainImageView)
+
+        if (fitCenter) {
+            builder.transform(com.bumptech.glide.load.resource.bitmap.FitCenter(), RoundedCorners(12))
+        } else {
+            builder.transform(CenterCrop(), RoundedCorners(12))
+        }
+        builder.into(cardView.mainImageView)
     }
 
     private fun setPlaceholder(cardView: ImageCardView) {
