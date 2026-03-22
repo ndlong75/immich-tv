@@ -9,6 +9,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -25,9 +26,9 @@ import com.immichtv.util.PrefsManager
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Period
-import java.time.format.DateTimeFormatter
 
 class PhotoViewerActivity : FragmentActivity() {
+
     companion object {
         const val EXTRA_ASSET_ID = "asset_id"
         const val EXTRA_ASSET_IDS = "asset_ids"
@@ -42,31 +43,43 @@ class PhotoViewerActivity : FragmentActivity() {
     private lateinit var favoriteIndicator: TextView
     private lateinit var facesOverlay: TextView
     private lateinit var slideshowIndicator: TextView
+    private lateinit var actionPanel: LinearLayout
+    private lateinit var btnFavorite: Button
+    private lateinit var btnSlideshow: Button
+    private lateinit var btnTimeline: Button
+    private lateinit var btnEditPerson: Button
+    private lateinit var btnExif: Button
 
     private var assetIds: List<String> = emptyList()
     private var currentIndex = 0
-    private var showOverlay = true
     private var showExif = false
+    private var showActions = false
     private var slideshowRunning = false
     private var currentAsset: Asset? = null
-    private var currentPhotoDate: String? = null  // for jump-to-timeline
-    private var currentFaces: List<AssetFace> = emptyList()  // for person edit
+    private var currentPhotoDate: String? = null
+    private var currentFaces: List<AssetFace> = emptyList()
 
     private val handler = Handler(Looper.getMainLooper())
-    private val hideOverlayRunnable = Runnable { fadeOutOverlay() }
+    private val hideHintsRunnable = Runnable { fadeOutHints() }
     private val slideshowRunnable = object : Runnable {
         override fun run() {
             if (slideshowRunning && currentIndex < assetIds.size - 1) {
                 currentIndex++
                 loadCurrentPhoto()
                 handler.postDelayed(this, PrefsManager.slideshowIntervalSeconds * 1000L)
-            } else { slideshowRunning = false; slideshowIndicator.visibility = View.GONE }
+            } else {
+                slideshowRunning = false
+                slideshowIndicator.visibility = View.GONE
+            }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
         setContentView(R.layout.activity_photo_viewer)
 
         imageView = findViewById(R.id.photo_image)
@@ -77,6 +90,19 @@ class PhotoViewerActivity : FragmentActivity() {
         favoriteIndicator = findViewById(R.id.favorite_indicator)
         facesOverlay = findViewById(R.id.faces_overlay)
         slideshowIndicator = findViewById(R.id.slideshow_indicator)
+        actionPanel = findViewById(R.id.action_panel)
+        btnFavorite = findViewById(R.id.btn_favorite)
+        btnSlideshow = findViewById(R.id.btn_slideshow)
+        btnTimeline = findViewById(R.id.btn_timeline)
+        btnEditPerson = findViewById(R.id.btn_edit_person)
+        btnExif = findViewById(R.id.btn_exif)
+
+        // Wire action buttons
+        btnFavorite.setOnClickListener { toggleFavorite(); closeActionPanel() }
+        btnSlideshow.setOnClickListener { toggleSlideshow(); closeActionPanel() }
+        btnTimeline.setOnClickListener { jumpToTimeline(); closeActionPanel() }
+        btnEditPerson.setOnClickListener { editPerson(); closeActionPanel() }
+        btnExif.setOnClickListener { toggleExifPanel(); closeActionPanel() }
 
         val ids = intent.getStringArrayListExtra(EXTRA_ASSET_IDS)
         val singleId = intent.getStringExtra(EXTRA_ASSET_ID)
@@ -84,61 +110,107 @@ class PhotoViewerActivity : FragmentActivity() {
         currentIndex = intent.getIntExtra(EXTRA_START_INDEX, 0)
             .coerceIn(0, (assetIds.size - 1).coerceAtLeast(0))
 
-        if (assetIds.isNotEmpty()) loadCurrentPhoto() else finish()
+        if (assetIds.isNotEmpty()) {
+            loadCurrentPhoto()
+            showHints()
+        } else finish()
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  FIRE TV STICK REMOTE MAPPING
+    //
+    //  ← →          Navigate photos
+    //  Select (OK)   Open/close action menu
+    //  Play/Pause    Toggle slideshow
+    //  Rewind  ⏪    Previous photo
+    //  Fast Fwd ⏩   Next photo
+    //  Menu ☰        Open/close action menu
+    //  Back          Close panel → stop slideshow → exit
+    // ══════════════════════════════════════════════════════════════════════
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { navigateNext(); true }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { navigatePrevious(); true }
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> { toggleOverlay(); true }
-            KeyEvent.KEYCODE_DPAD_UP -> { toggleExifPanel(); true }
-            KeyEvent.KEYCODE_DPAD_DOWN -> { toggleSlideshow(); true }
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { toggleSlideshow(); true }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BOOKMARK -> { toggleFavorite(); true }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_T -> { jumpToTimeline(); true }
-            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_BUTTON_Y -> { editPerson(); true }
-            KeyEvent.KEYCODE_BACK -> {
-                if (showExif) { toggleExifPanel(); true }
-                else if (slideshowRunning) { stopSlideshow(); true }
-                else { finish(); true }
+        // When action panel is open, let D-pad navigate the buttons naturally
+        if (showActions) {
+            return when (keyCode) {
+                KeyEvent.KEYCODE_BACK -> { closeActionPanel(); true }
+                else -> super.onKeyDown(keyCode, event)
             }
+        }
+
+        return when (keyCode) {
+            // Navigate photos
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                navigateNext(); true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                navigatePrevious(); true
+            }
+
+            // Open action menu (Select or Menu or Up)
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_DPAD_UP -> {
+                openActionPanel(); true
+            }
+
+            // Play/Pause = slideshow
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                toggleSlideshow(); true
+            }
+
+            // Back = close things or exit
+            KeyEvent.KEYCODE_BACK -> {
+                when {
+                    showExif -> { toggleExifPanel(); true }
+                    slideshowRunning -> { stopSlideshow(); true }
+                    else -> { finish(); true }
+                }
+            }
+
             else -> super.onKeyDown(keyCode, event)
         }
     }
+
+    // ── Navigation ──────────────────────────────────────────────────────
 
     private fun navigateNext() {
         if (slideshowRunning) stopSlideshow()
         if (currentIndex < assetIds.size - 1) { currentIndex++; loadCurrentPhoto() }
     }
+
     private fun navigatePrevious() {
         if (slideshowRunning) stopSlideshow()
         if (currentIndex > 0) { currentIndex--; loadCurrentPhoto() }
     }
 
+    // ── Photo loading ───────────────────────────────────────────────────
+
     private fun loadCurrentPhoto() {
         val assetId = assetIds[currentIndex]
         val headers = ImmichClient.authHeaders()
+
         val previewUrl = ImmichClient.thumbnailUrl(assetId)
         val originalUrl = ImmichClient.originalUrl(assetId)
 
-        val previewGlide = GlideUrl(previewUrl, LazyHeaders.Builder().apply {
+        val previewGlideUrl = GlideUrl(previewUrl, LazyHeaders.Builder().apply {
             headers.forEach { (k, v) -> addHeader(k, v) }
         }.build())
-        val originalGlide = GlideUrl(originalUrl, LazyHeaders.Builder().apply {
+        val originalGlideUrl = GlideUrl(originalUrl, LazyHeaders.Builder().apply {
             headers.forEach { (k, v) -> addHeader(k, v) }
         }.build())
 
         Glide.with(this).clear(imageView)
         Glide.with(this)
-            .load(originalGlide)
-            .thumbnail(Glide.with(this).load(previewGlide).transform(FitCenter()))
+            .load(originalGlideUrl)
+            .thumbnail(Glide.with(this).load(previewGlideUrl).transform(FitCenter()))
             .transform(FitCenter())
             .placeholder(ColorDrawable(Color.BLACK))
             .error(ColorDrawable(Color.DKGRAY))
             .into(imageView)
 
-        updateOverlay()
+        // Update counter
+        counterOverlay.text = "${currentIndex + 1} / ${assetIds.size}"
+        counterOverlay.visibility = View.VISIBLE
+
         loadAssetDetails(assetId)
     }
 
@@ -147,7 +219,7 @@ class PhotoViewerActivity : FragmentActivity() {
             try {
                 val asset = ImmichClient.getApi().getAssetInfo(assetId)
                 currentAsset = asset
-                currentPhotoDate = asset.localDateTime?.take(10)  // "YYYY-MM-DD"
+                currentPhotoDate = asset.localDateTime?.take(10)
                 updateFavoriteIndicator(asset.isFavorite)
                 if (showExif) updateExifPanel(asset)
                 loadFacesWithAge(assetId, asset.localDateTime)
@@ -163,9 +235,8 @@ class PhotoViewerActivity : FragmentActivity() {
                 if (named.isNotEmpty()) {
                     val labels = named.mapNotNull { face ->
                         val person = face.person ?: return@mapNotNull null
-                        val name = person.name
                         val age = calculateAge(person.birthDate, photoDate)
-                        if (age != null) "$name ($age)" else name
+                        if (age != null) "${person.name} ($age)" else person.name
                     }.distinct()
                     facesOverlay.text = labels.joinToString("  \u2022  ")
                     facesOverlay.visibility = View.VISIBLE
@@ -174,7 +245,10 @@ class PhotoViewerActivity : FragmentActivity() {
                     facesOverlay.visibility = View.GONE
                     currentFaces = emptyList()
                 }
-            } catch (_: Exception) { facesOverlay.visibility = View.GONE }
+            } catch (_: Exception) {
+                facesOverlay.visibility = View.GONE
+                currentFaces = emptyList()
+            }
         }
     }
 
@@ -184,22 +258,75 @@ class PhotoViewerActivity : FragmentActivity() {
             val birth = LocalDate.parse(birthDate.take(10))
             val photo = LocalDate.parse(photoDate.take(10))
             val period = Period.between(birth, photo)
-            if (period.years > 0) "${period.years}y"
-            else if (period.months > 0) "${period.months}m"
-            else "${period.days}d"
+            when {
+                period.years > 0 -> "${period.years}y"
+                period.months > 0 -> "${period.months}m"
+                else -> "${period.days}d"
+            }
         } catch (_: Exception) { null }
     }
+
+    // ── Action Panel ────────────────────────────────────────────────────
+
+    private fun openActionPanel() {
+        showActions = true
+        actionPanel.visibility = View.VISIBLE
+
+        // Update button labels with current state
+        val isFav = currentAsset?.isFavorite ?: false
+        btnFavorite.text = if (isFav) "\u2665 Unfavorite" else "\u2661 Favorite"
+        btnSlideshow.text = if (slideshowRunning) "\u23F8 Stop slideshow" else "\u25B6 Slideshow"
+        btnEditPerson.text = if (currentFaces.any { it.person?.name?.isNotBlank() == true })
+            "\uD83D\uDC64 Edit person" else "\uD83D\uDC64 No person"
+        btnEditPerson.isEnabled = currentFaces.any { it.person?.name?.isNotBlank() == true }
+
+        // Focus the first button
+        btnFavorite.requestFocus()
+    }
+
+    private fun closeActionPanel() {
+        showActions = false
+        actionPanel.visibility = View.GONE
+        // Return focus to the photo
+        imageView.requestFocus()
+    }
+
+    // ── Actions ─────────────────────────────────────────────────────────
 
     private fun toggleFavorite() {
         val assetId = assetIds[currentIndex]
         val newFav = !(currentAsset?.isFavorite ?: false)
         lifecycleScope.launch {
             try {
-                ImmichClient.getApi().updateAssets(UpdateAssetsRequest(ids = listOf(assetId), isFavorite = newFav))
+                ImmichClient.getApi().updateAssets(
+                    UpdateAssetsRequest(ids = listOf(assetId), isFavorite = newFav)
+                )
                 currentAsset = currentAsset?.copy(isFavorite = newFav)
                 updateFavoriteIndicator(newFav)
             } catch (_: Exception) {}
         }
+    }
+
+    private fun updateFavoriteIndicator(isFav: Boolean) {
+        favoriteIndicator.text = if (isFav) "\u2665" else "\u2661"
+        favoriteIndicator.setTextColor(if (isFav) Color.parseColor("#EF4444") else Color.WHITE)
+        favoriteIndicator.visibility = View.VISIBLE
+    }
+
+    private fun toggleSlideshow() {
+        if (slideshowRunning) stopSlideshow()
+        else {
+            slideshowRunning = true
+            slideshowIndicator.text = "\u25B6 Slideshow"
+            slideshowIndicator.visibility = View.VISIBLE
+            handler.postDelayed(slideshowRunnable, PrefsManager.slideshowIntervalSeconds * 1000L)
+        }
+    }
+
+    private fun stopSlideshow() {
+        slideshowRunning = false
+        handler.removeCallbacks(slideshowRunnable)
+        slideshowIndicator.visibility = View.GONE
     }
 
     private fun jumpToTimeline() {
@@ -212,7 +339,6 @@ class PhotoViewerActivity : FragmentActivity() {
     }
 
     private fun editPerson() {
-        // Find the first named person in the current photo's faces
         val face = currentFaces.firstOrNull { it.person?.name?.isNotBlank() == true }
         val person = face?.person
         if (person == null) {
@@ -227,71 +353,61 @@ class PhotoViewerActivity : FragmentActivity() {
         })
     }
 
-    private fun updateFavoriteIndicator(isFav: Boolean) {
-        favoriteIndicator.text = if (isFav) "\u2665" else "\u2661"
-        favoriteIndicator.setTextColor(if (isFav) Color.parseColor("#EF4444") else Color.WHITE)
-        favoriteIndicator.visibility = View.VISIBLE
-    }
-
     private fun toggleExifPanel() {
         showExif = !showExif
-        if (showExif) { currentAsset?.let { updateExifPanel(it) }; exifPanel.visibility = View.VISIBLE }
-        else exifPanel.visibility = View.GONE
+        if (showExif) {
+            currentAsset?.let { updateExifPanel(it) }
+            exifPanel.visibility = View.VISIBLE
+        } else {
+            exifPanel.visibility = View.GONE
+        }
     }
 
     private fun updateExifPanel(asset: Asset) {
         val exif = asset.exifInfo
         val sb = StringBuilder()
         sb.appendLine(asset.originalFileName)
-        if (asset.localDateTime != null) sb.appendLine("Date: ${asset.localDateTime.replace("T", " ").take(19)}")
+        if (asset.localDateTime != null)
+            sb.appendLine("Date: ${asset.localDateTime.replace("T", " ").take(19)}")
         if (exif != null) {
             if (exif.make != null || exif.model != null)
                 sb.appendLine("Camera: ${listOfNotNull(exif.make, exif.model).joinToString(" ")}")
             if (exif.lensModel != null) sb.appendLine("Lens: ${exif.lensModel}")
             val settings = listOfNotNull(
-                exif.fNumber?.let { "f/$it" }, exif.exposureTime?.let { "${it}s" },
-                exif.focalLength?.let { "${it}mm" }, exif.iso?.let { "ISO $it" }
+                exif.fNumber?.let { "f/$it" },
+                exif.exposureTime?.let { "${it}s" },
+                exif.focalLength?.let { "${it}mm" },
+                exif.iso?.let { "ISO $it" }
             )
             if (settings.isNotEmpty()) sb.appendLine(settings.joinToString("  "))
-            val loc = listOfNotNull(exif.city, exif.state, exif.country)
-            if (loc.isNotEmpty()) sb.appendLine("Location: ${loc.joinToString(", ")}")
-            if (exif.fileSizeInByte != null) sb.appendLine("Size: ${"%.1f".format(exif.fileSizeInByte / 1048576.0)} MB")
+            val location = listOfNotNull(exif.city, exif.state, exif.country)
+            if (location.isNotEmpty()) sb.appendLine("Location: ${location.joinToString(", ")}")
+            if (exif.fileSizeInByte != null) {
+                val mb = exif.fileSizeInByte / (1024.0 * 1024.0)
+                sb.appendLine("Size: ${"%.1f".format(mb)} MB")
+            }
             if (exif.description?.isNotBlank() == true) sb.appendLine("\"${exif.description}\"")
         }
-        sb.appendLine("\n\u2190\u2192 Navigate  \u2191 Close  \u2193 Slideshow")
-        sb.appendLine("A Favorite  B Jump to timeline")
         exifText.text = sb.toString().trim()
     }
 
-    private fun toggleSlideshow() {
-        if (slideshowRunning) stopSlideshow()
-        else {
-            slideshowRunning = true
-            slideshowIndicator.text = "\u25B6 Slideshow"
-            slideshowIndicator.visibility = View.VISIBLE
-            handler.postDelayed(slideshowRunnable, PrefsManager.slideshowIntervalSeconds * 1000L)
-        }
-    }
-    private fun stopSlideshow() {
-        slideshowRunning = false; handler.removeCallbacks(slideshowRunnable)
-        slideshowIndicator.visibility = View.GONE
+    // ── Hints ───────────────────────────────────────────────────────────
+
+    private fun showHints() {
+        infoOverlay.text = "\u2190\u2192 Navigate   OK Actions   \u25B6\u23F8 Slideshow   Back Exit"
+        infoOverlay.visibility = View.VISIBLE
+        handler.removeCallbacks(hideHintsRunnable)
+        handler.postDelayed(hideHintsRunnable, 4000)
     }
 
-    private fun updateOverlay() {
-        if (showOverlay) {
-            counterOverlay.text = "${currentIndex + 1} / ${assetIds.size}"
-            counterOverlay.visibility = View.VISIBLE
-            infoOverlay.text = "\u2190\u2192 Nav  \u2191 EXIF  \u2193 Slideshow  A Fav  B Timeline  Menu Edit person"
-            infoOverlay.visibility = View.VISIBLE
-            handler.removeCallbacks(hideOverlayRunnable)
-            handler.postDelayed(hideOverlayRunnable, 4000)
+    private fun fadeOutHints() {
+        infoOverlay.animate().alpha(0f).setDuration(300).withEndAction {
+            infoOverlay.visibility = View.GONE; infoOverlay.alpha = 1f
         }
     }
-    private fun toggleOverlay() { showOverlay = !showOverlay; if (showOverlay) updateOverlay() else fadeOutOverlay() }
-    private fun fadeOutOverlay() {
-        infoOverlay.animate().alpha(0f).setDuration(300).withEndAction { infoOverlay.visibility = View.GONE; infoOverlay.alpha = 1f }
-        counterOverlay.animate().alpha(0f).setDuration(300).withEndAction { counterOverlay.visibility = View.GONE; counterOverlay.alpha = 1f }
-    }
 
-    override fun onDestroy() { super.onDestroy(); handler.removeCallbacksAndMessages(null) }
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
+    }
 }
