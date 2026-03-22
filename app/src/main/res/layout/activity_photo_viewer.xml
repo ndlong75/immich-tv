@@ -65,7 +65,7 @@
         android:textSize="16sp"
         android:visibility="gone" />
 
-    <!-- Controls overlay bottom -->
+    <!-- Controls hint bar bottom -->
     <TextView
         android:id="@+id/info_overlay"
         android:layout_width="match_parent"
@@ -78,7 +78,86 @@
         android:textSize="15sp"
         android:visibility="gone" />
 
-    <!-- EXIF detail panel (right side, toggled with UP) -->
+    <!-- ACTION PANEL (opened with UP or Menu) - has focusable buttons -->
+    <LinearLayout
+        android:id="@+id/action_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#E6000000"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <!-- Action buttons row - navigable with D-pad left/right -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btn_favorite"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Favorite"
+                android:textSize="14sp"
+                android:backgroundTint="#374151"
+                android:textColor="#FFFFFF"
+                android:focusable="true"
+                android:layout_marginEnd="12dp"
+                android:paddingHorizontal="20dp" />
+
+            <Button
+                android:id="@+id/btn_slideshow"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Slideshow"
+                android:textSize="14sp"
+                android:backgroundTint="#374151"
+                android:textColor="#FFFFFF"
+                android:focusable="true"
+                android:layout_marginEnd="12dp"
+                android:paddingHorizontal="20dp" />
+
+            <Button
+                android:id="@+id/btn_timeline"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Jump to date"
+                android:textSize="14sp"
+                android:backgroundTint="#374151"
+                android:textColor="#FFFFFF"
+                android:focusable="true"
+                android:layout_marginEnd="12dp"
+                android:paddingHorizontal="20dp" />
+
+            <Button
+                android:id="@+id/btn_edit_person"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Edit person"
+                android:textSize="14sp"
+                android:backgroundTint="#374151"
+                android:textColor="#FFFFFF"
+                android:focusable="true"
+                android:layout_marginEnd="12dp"
+                android:paddingHorizontal="20dp" />
+
+            <Button
+                android:id="@+id/btn_exif"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Photo info"
+                android:textSize="14sp"
+                android:backgroundTint="#374151"
+                android:textColor="#FFFFFF"
+                android:focusable="true"
+                android:paddingHorizontal="20dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- EXIF detail panel (right side) -->
     <LinearLayout
         android:id="@+id/exif_panel"
         android:layout_width="340dp"
