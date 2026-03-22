@@ -24,10 +24,10 @@ class PersonAssetsFragment : GenericAssetFragment() {
     ): Either<String, List<Asset>> {
         return apiClient.listAssets(page,
             pageCount,
-            random = true,
+            random = false,
             order = "desc",
             contentType = currentFilter,
-            personIds = listOf(UUID.fromString(personId))).map { it.shuffled() }
+            personIds = listOf(UUID.fromString(personId)))
     }
 
     override fun showMediaCount(): Boolean {
