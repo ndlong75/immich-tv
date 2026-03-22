@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <ImageView
+        android:id="@+id/photo_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/photo_content_desc" />
+
+    <!-- Counter overlay top-right -->
+    <TextView
+        android:id="@+id/counter_overlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="24dp"
+        android:background="#80000000"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:fontFamily="sans-serif-medium"
+        android:visibility="gone" />
+
+    <!-- Info overlay bottom -->
+    <TextView
+        android:id="@+id/info_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#80000000"
+        android:gravity="center"
+        android:padding="16dp"
+        android:textColor="#CCCCCC"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+</FrameLayout>

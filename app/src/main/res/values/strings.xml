@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Immich TV</string>
+    <string name="photo_content_desc">Photo viewer</string>
+    <string name="browse_title">Browse</string>
+</resources>

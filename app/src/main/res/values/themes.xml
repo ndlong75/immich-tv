@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base TV theme -->
+    <style name="Theme.ImmichTV" parent="@style/Theme.Leanback">
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:colorPrimary">@color/brand_blue</item>
+        <item name="android:colorPrimaryDark">@color/bg_primary</item>
+        <item name="android:colorAccent">@color/brand_light_blue</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+    <!-- Fullscreen for photo viewer & video player -->
+    <style name="Theme.ImmichTV.Fullscreen">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+</resources>

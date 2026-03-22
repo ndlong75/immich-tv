@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Declare this is a TV app (no touchscreen required) -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+
+    <!-- Fire Stick doesn't have these -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.gps"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <application
+        android:name=".ImmichTVApp"
+        android:allowBackup="true"
+        android:banner="@drawable/app_banner"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ImmichTV"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="31">
+
+        <!-- Main Activity (TV Launcher) -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <!-- Also allow standard launcher for sideloaded apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Photo Grid Browser -->
+        <activity
+            android:name=".ui.BrowseGridActivity"
+            android:screenOrientation="landscape" />
+
+        <!-- Full Screen Photo Viewer -->
+        <activity
+            android:name=".ui.PhotoViewerActivity"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.ImmichTV.Fullscreen" />
+
+        <!-- Video Player -->
+        <activity
+            android:name=".ui.VideoPlayerActivity"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.ImmichTV.Fullscreen" />
+
+        <!-- Settings -->
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:screenOrientation="landscape" />
+
+    </application>
+
+</manifest>
