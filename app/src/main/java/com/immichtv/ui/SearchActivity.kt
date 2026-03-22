@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import com.immichtv.R
 import com.immichtv.api.*
 import com.immichtv.ui.presenters.CardPresenter
+import com.immichtv.util.AssetStore
 import kotlinx.coroutines.launch
 
 class SearchActivity : FragmentActivity() {
@@ -100,29 +101,18 @@ class SearchResultsFragment : VerticalGridSupportFragment() {
     }
 
     private fun openAsset(asset: Asset) {
-        val imageAssets = assets.filter { it.type == AssetType.IMAGE }
-        val imageIndex = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
-
         if (asset.type == AssetType.VIDEO) {
             startActivity(Intent(requireContext(), VideoPlayerActivity::class.java).apply {
                 putExtra(VideoPlayerActivity.EXTRA_ASSET_ID, asset.id)
                 putExtra(VideoPlayerActivity.EXTRA_TITLE, asset.originalFileName)
             })
         } else {
-            // Limit IDs to prevent TransactionTooLargeException
-            val windowSize = 50
-            val windowStart = (imageIndex - windowSize / 2).coerceAtLeast(0)
-            val windowEnd = (windowStart + windowSize).coerceAtMost(imageAssets.size)
-            val windowIds = imageAssets.subList(windowStart, windowEnd).map { it.id }
-            val adjustedIndex = imageIndex - windowStart
+            val imageAssets = assets.filter { it.type == AssetType.IMAGE }
+            val imageIndex = imageAssets.indexOfFirst { it.id == asset.id }.coerceAtLeast(0)
+            AssetStore.set(imageAssets, imageIndex)
 
             startActivity(Intent(requireContext(), PhotoViewerActivity::class.java).apply {
                 putExtra(PhotoViewerActivity.EXTRA_ASSET_ID, asset.id)
-                putStringArrayListExtra(
-                    PhotoViewerActivity.EXTRA_ASSET_IDS,
-                    ArrayList(windowIds)
-                )
-                putExtra(PhotoViewerActivity.EXTRA_START_INDEX, adjustedIndex)
             })
         }
     }
