@@ -1,7 +1,5 @@
 package com.immichtv.api
 
-import com.google.gson.annotations.SerializedName
-
 // ── Auth ────────────────────────────────────────────────────────────────
 
 data class LoginRequest(
@@ -17,7 +15,7 @@ data class LoginResponse(
     val isAdmin: Boolean = false
 )
 
-// ── Albums ──────────────────────────────────────────────────────────────────
+// ── Albums ──────────────────────────────────────────────────────────────
 
 data class AlbumSimple(
     val id: String,
@@ -35,7 +33,7 @@ data class AlbumDetail(
     val assets: List<Asset>
 )
 
-// ── Assets ──────────────────────────────────────────────────────────────────
+// ── Assets ──────────────────────────────────────────────────────────────
 
 data class Asset(
     val id: String,
@@ -44,7 +42,9 @@ data class Asset(
     val originalMimeType: String?,
     val thumbhash: String?,
     val localDateTime: String?,
+    val fileCreatedAt: String?,
     val isFavorite: Boolean = false,
+    val isArchived: Boolean = false,
     val exifInfo: ExifInfo? = null
 )
 
@@ -54,13 +54,23 @@ enum class AssetType {
 
 data class ExifInfo(
     val city: String?,
+    val state: String?,
     val country: String?,
     val description: String?,
     val make: String?,
-    val model: String?
+    val model: String?,
+    val fNumber: Double?,
+    val exposureTime: String?,
+    val focalLength: Double?,
+    val iso: Int?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val dateTimeOriginal: String?,
+    val fileSizeInByte: Long?,
+    val lensModel: String?
 )
 
-// ── People ──────────────────────────────────────────────────────────────────
+// ── People ──────────────────────────────────────────────────────────────
 
 data class PeopleResponse(
     val total: Int,
@@ -72,10 +82,27 @@ data class Person(
     val name: String,
     val thumbnailPath: String?,
     val birthDate: String?,
-    val assetCount: Int = 0    // Immich returns this — used for sorting
+    val assetCount: Int = 0
 )
 
-// ── Memories ────────────────────────────────────────────────────────────────
+// ── Faces ───────────────────────────────────────────────────────────────
+
+data class AssetFace(
+    val id: String,
+    val imageHeight: Int?,
+    val imageWidth: Int?,
+    val boundingBoxX1: Int?,
+    val boundingBoxY1: Int?,
+    val boundingBoxX2: Int?,
+    val boundingBoxY2: Int?,
+    val person: Person?
+)
+
+data class FaceReassignRequest(
+    val id: String  // person ID to assign to
+)
+
+// ── Memories ────────────────────────────────────────────────────────────
 
 data class Memory(
     val id: String,
@@ -88,7 +115,7 @@ data class MemoryData(
     val year: Int?
 )
 
-// ── Search ──────────────────────────────────────────────────────────────────
+// ── Search ──────────────────────────────────────────────────────────────
 
 data class SearchRequest(
     val query: String? = null,
@@ -96,7 +123,13 @@ data class SearchRequest(
     val page: Int = 1,
     val size: Int = 50,
     val personIds: List<String>? = null,
-    val order: String? = null   // "asc" or "desc"
+    val order: String? = null
+)
+
+data class SmartSearchRequest(
+    val query: String,
+    val page: Int = 1,
+    val size: Int = 50
 )
 
 data class SearchResponse(
@@ -109,7 +142,50 @@ data class SearchAssets(
     val nextPage: String? = null
 )
 
-// ── Server Info ─────────────────────────────────────────────────────────────
+// ── Explore ─────────────────────────────────────────────────────────────
+
+data class ExploreGroup(
+    val fieldName: String,
+    val items: List<ExploreItem>
+)
+
+data class ExploreItem(
+    val value: String,
+    val data: ExploreItemData
+)
+
+data class ExploreItemData(
+    val id: String,
+    val type: AssetType?
+)
+
+// ── Folders ─────────────────────────────────────────────────────────────
+
+data class FolderNode(
+    val path: String,
+    val children: List<FolderNode>?
+)
+
+// ── Map ─────────────────────────────────────────────────────────────────
+
+data class MapMarker(
+    val id: String,
+    val lat: Double,
+    val lon: Double,
+    val city: String?,
+    val state: String?,
+    val country: String?
+)
+
+// ── Update Assets (favorite, archive) ───────────────────────────────────
+
+data class UpdateAssetsRequest(
+    val ids: List<String>,
+    val isFavorite: Boolean? = null,
+    val isArchived: Boolean? = null
+)
+
+// ── Server Info ─────────────────────────────────────────────────────────
 
 data class ServerInfo(
     val version: String,
@@ -122,7 +198,7 @@ data class UserInfo(
     val name: String
 )
 
-// ── Timeline / Buckets ─────────────────────────────────────────────────────
+// ── Timeline / Buckets ─────────────────────────────────────────────────
 
 data class TimeBucket(
     val timeBucket: String,

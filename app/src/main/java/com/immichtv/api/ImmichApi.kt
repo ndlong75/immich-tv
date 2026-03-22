@@ -68,15 +68,59 @@ interface ImmichApi {
         @Query("timeBucket") timeBucket: String
     ): List<Asset>
 
-    // ── Search (used for person assets, latest photos, etc.) ────────────────
+    // ── Search ──────────────────────────────────────────────────────────────
 
     @POST("api/search/metadata")
     suspend fun searchAssets(
         @Body request: SearchRequest
     ): SearchResponse
 
-    // ── Asset URLs (constructed, not API calls) ─────────────────────────────
-    // Thumbnail: {baseUrl}/api/assets/{id}/thumbnail
-    // Original:  {baseUrl}/api/assets/{id}/original
-    // Video:     {baseUrl}/api/assets/{id}/video/playback
+    @POST("api/search/smart")
+    suspend fun smartSearch(
+        @Body request: SmartSearchRequest
+    ): SearchResponse
+
+    // ── Explore / Categories ────────────────────────────────────────────────
+
+    @GET("api/search/explore")
+    suspend fun getExploreData(): List<ExploreGroup>
+
+    // ── Folders ─────────────────────────────────────────────────────────────
+
+    @GET("api/view/folder")
+    suspend fun getFolderTree(): List<FolderNode>
+
+    @GET("api/view/folder")
+    suspend fun getFolderContents(
+        @Query("path") path: String
+    ): List<FolderNode>
+
+    // ── Map ─────────────────────────────────────────────────────────────────
+
+    @GET("api/map/markers")
+    suspend fun getMapMarkers(
+        @Query("isArchived") isArchived: Boolean = false,
+        @Query("isFavorite") isFavorite: Boolean? = null,
+        @Query("withPartners") withPartners: Boolean = false
+    ): List<MapMarker>
+
+    // ── Faces on asset ──────────────────────────────────────────────────────
+
+    @GET("api/faces")
+    suspend fun getAssetFaces(
+        @Query("id") assetId: String
+    ): List<AssetFace>
+
+    @PUT("api/faces/{id}")
+    suspend fun reassignFace(
+        @Path("id") faceId: String,
+        @Body request: FaceReassignRequest
+    ): AssetFace
+
+    // ── Favorites ───────────────────────────────────────────────────────────
+
+    @PUT("api/assets")
+    suspend fun updateAssets(
+        @Body request: UpdateAssetsRequest
+    ): Unit
 }

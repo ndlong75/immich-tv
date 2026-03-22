@@ -11,7 +11,7 @@
         android:scaleType="fitCenter"
         android:contentDescription="@string/photo_content_desc" />
 
-    <!-- Counter overlay top-right -->
+    <!-- Counter top-right -->
     <TextView
         android:id="@+id/counter_overlay"
         android:layout_width="wrap_content"
@@ -23,10 +23,49 @@
         android:paddingVertical="8dp"
         android:textColor="#FFFFFF"
         android:textSize="18sp"
-        android:fontFamily="sans-serif-medium"
         android:visibility="gone" />
 
-    <!-- Info overlay bottom -->
+    <!-- Favorite indicator top-left -->
+    <TextView
+        android:id="@+id/favorite_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="24dp"
+        android:textSize="28sp"
+        android:textColor="#FFFFFF"
+        android:visibility="gone" />
+
+    <!-- Slideshow indicator top-center -->
+    <TextView
+        android:id="@+id/slideshow_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="24dp"
+        android:background="#80000000"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp"
+        android:textColor="#4ade80"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Faces overlay bottom-left (above controls) -->
+    <TextView
+        android:id="@+id/faces_overlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="64dp"
+        android:background="#80000000"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:textColor="#93C5FD"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Controls overlay bottom -->
     <TextView
         android:id="@+id/info_overlay"
         android:layout_width="match_parent"
@@ -34,9 +73,38 @@
         android:layout_gravity="bottom"
         android:background="#80000000"
         android:gravity="center"
-        android:padding="16dp"
+        android:padding="14dp"
         android:textColor="#CCCCCC"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:visibility="gone" />
+
+    <!-- EXIF detail panel (right side, toggled with UP) -->
+    <LinearLayout
+        android:id="@+id/exif_panel"
+        android:layout_width="340dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#CC0f0f23"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Photo details"
+            android:textColor="#93C5FD"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/exif_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#E5E7EB"
+            android:textSize="15sp"
+            android:lineSpacingExtra="6dp" />
+    </LinearLayout>
 
 </FrameLayout>
