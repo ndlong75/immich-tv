@@ -42,6 +42,11 @@ class SettingsActivity : FragmentActivity() {
         emailInput.setText(
             PrefsManager.userEmail.ifBlank { "ndlong75@gmail.com" }
         )
+
+        // Pre-fill password if first time
+        if (!PrefsManager.isConfigured()) {
+            passwordInput.setText("")
+        }
         passwordInput.setText("")
         if (!PrefsManager.isConfigured()) {
             passwordInput.setText("")

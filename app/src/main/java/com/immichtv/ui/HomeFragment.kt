@@ -43,36 +43,15 @@ class HomeFragment : BrowseSupportFragment() {
     }
 
     private fun setupEventListeners() {
-        // Clicking ANY item in a row opens the GRID view for that category
+        // When user clicks on a header (sidebar item), open a grid
         onItemViewClickedListener = OnItemViewClickedListener { _, item, _, row ->
             val headerTitle = (row as? ListRow)?.headerItem?.name ?: ""
-
-            when {
-                // Photos row → open full photos grid
-                headerTitle.contains("Photos") && item is Asset ->
-                    openGrid(BrowseGridActivity.MODE_PHOTOS, "", "Photos")
-
-                // Memories row → open memory grid
-                item is MemoryCard ->
-                    openGrid(BrowseGridActivity.MODE_MEMORY, item.id, item.title)
-
-                // Albums row → open album grid
-                item is AlbumSimple ->
-                    openGrid(BrowseGridActivity.MODE_ALBUM, item.id, item.albumName)
-
-                // People row → open person grid
-                item is Person ->
-                    openGrid(BrowseGridActivity.MODE_PERSON, item.id, item.name)
-
-                // Random row → open random grid
-                headerTitle.contains("Random") && item is Asset ->
-                    openGrid(BrowseGridActivity.MODE_RANDOM, "", "Random Photos")
-
-                // Navigate row items
-                item is NavItem -> handleNavItem(item)
-
-                // Settings
-                item is SettingsItem -> openSettings()
+            when (item) {
+                is NavItem -> handleNavItem(item)
+                is AlbumSimple -> openAlbum(item)
+                is Person -> openPerson(item)
+                is Asset -> openAsset(item)
+                is MemoryCard -> openMemory(item)
             }
         }
     }
@@ -94,43 +73,44 @@ class HomeFragment : BrowseSupportFragment() {
             return
         }
 
-        loadLatestPhotos()
-        loadMemories()
-        loadAlbums()
-        loadPeople()
-        loadRandomPhotos()
-        addNavigationRow()
+        // Each sidebar row shows a PREVIEW strip; clicking any item opens full grid
+        addPhotosPreview()
+        addMemoriesPreview()
+        addAlbumsPreview()
+        addPeoplePreview()
+        addRandomPreview()
+        addBrowseRow()
         addSettingsRow()
     }
 
-    // ── Data Loading ────────────────────────────────────────────────────
-
-    private fun loadLatestPhotos() {
+    private fun addPhotosPreview() {
         lifecycleScope.launch {
             try {
                 val response = ImmichClient.getApi().searchAssets(
-                    SearchRequest(size = 50, order = "desc")
+                    SearchRequest(size = 30, order = "desc")
                 )
                 val assets = response.assets.items
                 if (assets.isNotEmpty()) {
                     val listAdapter = ArrayObjectAdapter(CardPresenter(ImmichClient.baseUrl))
+                    // First item is a "View All" nav card
+                    listAdapter.add(NavItem("photos", "\u25A6 View All Photos", "Open full grid"))
                     assets.forEach { listAdapter.add(it) }
-                    rowsAdapter.add(0, ListRow(HeaderItem("\uD83D\uDCF8 Photos"), listAdapter))
+                    rowsAdapter.add(ListRow(HeaderItem("\uD83D\uDCF8 Photos"), listAdapter))
                 }
             } catch (_: Exception) {}
         }
     }
 
-    private fun loadMemories() {
+    private fun addMemoriesPreview() {
         lifecycleScope.launch {
             try {
                 val memories = ImmichClient.getApi().getMemories()
                 if (memories.isNotEmpty()) {
                     val listAdapter = ArrayObjectAdapter(CardPresenter(ImmichClient.baseUrl))
                     memories.forEach { memory ->
-                        val title = if (memory.data.year != null)
+                        val title = if (memory.data.year != null) {
                             "${memory.data.year} \u2014 ${memory.assets.size} photos"
-                        else "Memory \u2014 ${memory.assets.size} photos"
+                        } else "Memory \u2014 ${memory.assets.size} photos"
                         listAdapter.add(MemoryCard(
                             id = memory.id, title = title,
                             thumbnailAssetId = memory.assets.firstOrNull()?.id,
@@ -143,7 +123,7 @@ class HomeFragment : BrowseSupportFragment() {
         }
     }
 
-    private fun loadAlbums() {
+    private fun addAlbumsPreview() {
         lifecycleScope.launch {
             try {
                 val albums = ImmichClient.getApi().getAlbums()
@@ -158,7 +138,7 @@ class HomeFragment : BrowseSupportFragment() {
         }
     }
 
-    private fun loadPeople() {
+    private fun addPeoplePreview() {
         lifecycleScope.launch {
             try {
                 val response = ImmichClient.getApi().getPeople()
@@ -172,22 +152,21 @@ class HomeFragment : BrowseSupportFragment() {
         }
     }
 
-    private fun loadRandomPhotos() {
+    private fun addRandomPreview() {
         lifecycleScope.launch {
             try {
                 val assets = ImmichClient.getApi().getRandomAssets(30)
                 if (assets.isNotEmpty()) {
                     val listAdapter = ArrayObjectAdapter(CardPresenter(ImmichClient.baseUrl))
+                    listAdapter.add(NavItem("random", "\u25A6 View All Random", "Open full grid"))
                     assets.forEach { listAdapter.add(it) }
-                    rowsAdapter.add(ListRow(HeaderItem("\uD83C\uDFB2 Random Photos"), listAdapter))
+                    rowsAdapter.add(ListRow(HeaderItem("\uD83C\uDFB2 Random"), listAdapter))
                 }
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Failed to load photos", Toast.LENGTH_SHORT).show()
-            }
+            } catch (_: Exception) {}
         }
     }
 
-    private fun addNavigationRow() {
+    private fun addBrowseRow() {
         val listAdapter = ArrayObjectAdapter(IconCardPresenter())
         listAdapter.add(NavItem("search", "\uD83D\uDD0D Search", "Smart AI search"))
         listAdapter.add(NavItem("explore", "\uD83C\uDF0D Explore", "Places and things"))
@@ -198,13 +177,25 @@ class HomeFragment : BrowseSupportFragment() {
 
     private fun addSettingsRow() {
         val listAdapter = ArrayObjectAdapter(IconCardPresenter())
-        listAdapter.add(SettingsItem("\u2699\uFE0F Server Settings", "Configure connection"))
+        listAdapter.add(NavItem("settings", "\u2699\uFE0F Settings", "Configure connection"))
         rowsAdapter.add(ListRow(HeaderItem("\u2699\uFE0F Settings"), listAdapter))
     }
 
     // ── Navigation ──────────────────────────────────────────────────────
 
-    private fun openGrid(mode: String, id: String, title: String) {
+    private fun handleNavItem(item: NavItem) {
+        when (item.id) {
+            "photos" -> openGrid(BrowseGridActivity.MODE_PHOTOS, "Photos")
+            "random" -> openGrid(BrowseGridActivity.MODE_RANDOM, "Random Photos")
+            "timeline" -> openGrid(BrowseGridActivity.MODE_TIMELINE, "Timeline")
+            "search" -> startActivity(Intent(requireContext(), SearchActivity::class.java))
+            "explore" -> startActivity(Intent(requireContext(), ExploreActivity::class.java))
+            "locations" -> startActivity(Intent(requireContext(), MapActivity::class.java))
+            "settings" -> startActivity(Intent(requireContext(), SettingsActivity::class.java))
+        }
+    }
+
+    private fun openGrid(mode: String, title: String, id: String = "") {
         startActivity(Intent(requireContext(), BrowseGridActivity::class.java).apply {
             putExtra(BrowseGridActivity.EXTRA_MODE, mode)
             putExtra(BrowseGridActivity.EXTRA_ID, id)
@@ -212,21 +203,39 @@ class HomeFragment : BrowseSupportFragment() {
         })
     }
 
-    private fun handleNavItem(item: NavItem) {
-        when (item.action) {
-            "search" -> startActivity(Intent(requireContext(), SearchActivity::class.java))
-            "explore" -> startActivity(Intent(requireContext(), ExploreActivity::class.java))
-            "locations" -> startActivity(Intent(requireContext(), MapActivity::class.java))
-            "timeline" -> openGrid(BrowseGridActivity.MODE_TIMELINE, "", "Timeline")
-        }
+    private fun openAlbum(album: AlbumSimple) {
+        openGrid(BrowseGridActivity.MODE_ALBUM, album.albumName, album.id)
     }
 
-    private fun openSettings() {
-        startActivity(Intent(requireContext(), SettingsActivity::class.java))
+    private fun openPerson(person: Person) {
+        openGrid(BrowseGridActivity.MODE_PERSON, person.name, person.id)
+    }
+
+    private fun openMemory(memory: MemoryCard) {
+        openGrid(BrowseGridActivity.MODE_MEMORY, memory.title, memory.id)
+    }
+
+    private fun openAsset(asset: Asset) {
+        if (asset.type == AssetType.VIDEO) {
+            startActivity(Intent(requireContext(), VideoPlayerActivity::class.java).apply {
+                putExtra(VideoPlayerActivity.EXTRA_ASSET_ID, asset.id)
+                putExtra(VideoPlayerActivity.EXTRA_TITLE, asset.originalFileName)
+            })
+        } else {
+            startActivity(Intent(requireContext(), PhotoViewerActivity::class.java).apply {
+                putExtra(PhotoViewerActivity.EXTRA_ASSET_ID, asset.id)
+            })
+        }
     }
 }
 
-// ── Data classes ────────────────────────────────────────────────────────────
+// ── Data classes ────────────────────────────────────────────────────────
+
+data class NavItem(
+    val id: String,
+    val title: String,
+    val description: String
+)
 
 data class MemoryCard(
     val id: String,
@@ -235,13 +244,8 @@ data class MemoryCard(
     val assets: List<Asset>
 )
 
+// Kept for IconCardPresenter compatibility
 data class SettingsItem(
-    val title: String,
-    val description: String
-)
-
-data class NavItem(
-    val action: String,
     val title: String,
     val description: String
 )
