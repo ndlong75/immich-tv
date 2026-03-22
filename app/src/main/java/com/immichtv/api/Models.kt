@@ -78,7 +78,9 @@ data class SearchRequest(
     val query: String? = null,
     val type: String? = null,
     val page: Int = 1,
-    val size: Int = 50
+    val size: Int = 50,
+    val personIds: List<String>? = null,
+    val order: String? = null   // "asc" or "desc"
 )
 
 data class SearchResponse(
@@ -87,7 +89,8 @@ data class SearchResponse(
 
 data class SearchAssets(
     val total: Int,
-    val items: List<Asset>
+    val items: List<Asset>,
+    val nextPage: String? = null
 )
 
 // ── Server Info ─────────────────────────────────────────────────────────────

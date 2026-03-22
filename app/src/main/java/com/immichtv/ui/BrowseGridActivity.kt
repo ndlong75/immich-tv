@@ -77,7 +77,7 @@ class AssetGridFragment : VerticalGridSupportFragment() {
 
     private fun loadAssets() {
         val mode = arguments?.getString(BrowseGridActivity.EXTRA_MODE) ?: return
-        val id = arguments?.getString(BrowseGridActivity.EXTRA_ID) ?: return
+        val id = arguments?.getString(BrowseGridActivity.EXTRA_ID) ?: ""
 
         lifecycleScope.launch {
             try {
@@ -87,11 +87,29 @@ class AssetGridFragment : VerticalGridSupportFragment() {
                         album.assets
                     }
                     BrowseGridActivity.MODE_PERSON -> {
-                        ImmichClient.getApi().getPersonAssets(id)
+                        // Use search/metadata with personIds (correct Immich API)
+                        val response = ImmichClient.getApi().searchAssets(
+                            SearchRequest(
+                                personIds = listOf(id),
+                                size = 200,
+                                order = "desc"
+                            )
+                        )
+                        response.assets.items
                     }
                     BrowseGridActivity.MODE_MEMORY -> {
                         val memories = ImmichClient.getApi().getMemories()
                         memories.find { it.id == id }?.assets ?: emptyList()
+                    }
+                    BrowseGridActivity.MODE_TIMELINE -> {
+                        // Latest photos desc by time
+                        val response = ImmichClient.getApi().searchAssets(
+                            SearchRequest(
+                                size = 200,
+                                order = "desc"
+                            )
+                        )
+                        response.assets.items
                     }
                     else -> emptyList()
                 }

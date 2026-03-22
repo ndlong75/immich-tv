@@ -17,11 +17,12 @@ import kotlinx.coroutines.launch
 class HomeFragment : BrowseSupportFragment() {
 
     companion object {
-        private const val ROW_MEMORIES = 0L
-        private const val ROW_ALBUMS = 1L
-        private const val ROW_PEOPLE = 2L
-        private const val ROW_RANDOM = 3L
-        private const val ROW_SETTINGS = 4L
+        private const val ROW_PHOTOS = 0L
+        private const val ROW_MEMORIES = 1L
+        private const val ROW_ALBUMS = 2L
+        private const val ROW_PEOPLE = 3L
+        private const val ROW_RANDOM = 4L
+        private const val ROW_SETTINGS = 5L
     }
 
     private val rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
@@ -77,6 +78,7 @@ class HomeFragment : BrowseSupportFragment() {
             return
         }
 
+        loadLatestPhotos()
         loadMemories()
         loadAlbums()
         loadPeople()
@@ -85,6 +87,26 @@ class HomeFragment : BrowseSupportFragment() {
     }
 
     // ── Data Loading ────────────────────────────────────────────────────────
+
+    private fun loadLatestPhotos() {
+        lifecycleScope.launch {
+            try {
+                val response = ImmichClient.getApi().searchAssets(
+                    SearchRequest(size = 50, order = "desc")
+                )
+                val assets = response.assets.items
+                if (assets.isNotEmpty()) {
+                    val cardPresenter = CardPresenter(ImmichClient.baseUrl)
+                    val listAdapter = ArrayObjectAdapter(cardPresenter)
+                    assets.forEach { asset -> listAdapter.add(asset) }
+                    val header = HeaderItem(ROW_PHOTOS, "\uD83D\uDCF8 Photos")
+                    rowsAdapter.add(0, ListRow(header, listAdapter))
+                }
+            } catch (e: Exception) {
+                // Fallback silently
+            }
+        }
+    }
 
     private fun loadMemories() {
         lifecycleScope.launch {

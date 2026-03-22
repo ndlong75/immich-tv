@@ -43,11 +43,6 @@ interface ImmichApi {
         @Query("withHidden") withHidden: Boolean = false
     ): PeopleResponse
 
-    @GET("api/people/{id}/assets")
-    suspend fun getPersonAssets(
-        @Path("id") personId: String
-    ): List<Asset>
-
     // ── Memories ────────────────────────────────────────────────────────────
 
     @GET("api/memories")
@@ -66,7 +61,7 @@ interface ImmichApi {
         @Query("timeBucket") timeBucket: String
     ): List<Asset>
 
-    // ── Search ──────────────────────────────────────────────────────────────
+    // ── Search (used for person assets, latest photos, etc.) ────────────────
 
     @POST("api/search/metadata")
     suspend fun searchAssets(
