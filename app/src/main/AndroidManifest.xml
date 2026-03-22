@@ -84,6 +84,26 @@
             android:name=".ui.SettingsActivity"
             android:screenOrientation="landscape" />
 
+        <!-- Search -->
+        <activity
+            android:name=".ui.SearchActivity"
+            android:screenOrientation="landscape" />
+
+        <!-- Explore -->
+        <activity
+            android:name=".ui.ExploreActivity"
+            android:screenOrientation="landscape" />
+
+        <!-- Map / Locations -->
+        <activity
+            android:name=".ui.MapActivity"
+            android:screenOrientation="landscape" />
+
+        <!-- Folder Browser -->
+        <activity
+            android:name=".ui.FolderBrowserActivity"
+            android:screenOrientation="landscape" />
+
         <!-- Smart Search -->
         <activity
             android:name=".ui.SearchActivity"
