@@ -3,9 +3,11 @@ name: Build Immich TV APK
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Allow manual trigger from GitHub UI
+    tags: [ 'v*' ]        # Trigger release on version tags like v1.0.0
+  workflow_dispatch:       # Manual trigger from GitHub UI
+
+permissions:
+  contents: write          # Needed to create releases
 
 jobs:
   build:
@@ -33,19 +35,24 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Rename APK with version
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/immich-tv-${VERSION}.apk
 
-      - name: Upload Debug APK
+      - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: immich-tv-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
+      # Create GitHub Release when a version tag is pushed
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: immich-tv-release
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
-          retention-days: 30
+          files: app/build/outputs/apk/debug/immich-tv-${{ github.ref_name }}.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
