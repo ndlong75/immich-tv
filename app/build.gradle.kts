@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.immichtv"
-        minSdk = 25          // Fire Stick 4K runs Android 9 (API 28), but 25 covers older sticks
+        minSdk = 26          // Fire Stick 4K runs Android 9 (API 28); 26 needed for adaptive icons
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
