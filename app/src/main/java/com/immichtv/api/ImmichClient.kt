@@ -1,32 +1,44 @@
 package com.immichtv.api
 
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
 object ImmichClient {
 
     private var api: ImmichApi? = null
-    private var unauthApi: ImmichApi? = null  // For login (no auth header)
+    private var unauthApi: ImmichApi? = null
     private var currentBaseUrl: String = ""
     private var currentToken: String = ""
 
     val baseUrl: String get() = currentBaseUrl
 
-    /** Create an unauthenticated client for login only */
+    /** Gson that won't crash on unknown enum values */
+    private val gson: Gson = GsonBuilder()
+        .registerTypeAdapter(AssetType::class.java, JsonDeserializer<AssetType> { json, _, _ ->
+            try {
+                AssetType.valueOf(json.asString.uppercase())
+            } catch (_: Exception) {
+                AssetType.IMAGE  // Default to IMAGE for unknown types
+            }
+        })
+        .setLenient()
+        .create()
+
     fun configureForLogin(baseUrl: String) {
         val normalizedUrl = baseUrl.trimEnd('/') + "/"
         currentBaseUrl = normalizedUrl
 
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
-
         val client = OkHttpClient.Builder()
-            .addInterceptor(logging)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
@@ -34,7 +46,7 @@ object ImmichClient {
         val retrofit = Retrofit.Builder()
             .baseUrl(normalizedUrl)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
 
         unauthApi = retrofit.create(ImmichApi::class.java)
@@ -75,7 +87,7 @@ object ImmichClient {
         val retrofit = Retrofit.Builder()
             .baseUrl(normalizedUrl)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
 
         api = retrofit.create(ImmichApi::class.java)
