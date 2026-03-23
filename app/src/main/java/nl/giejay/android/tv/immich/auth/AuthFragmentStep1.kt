@@ -41,8 +41,8 @@ class AuthFragmentStep1 : GuidedStepSupportFragment() {
         addCheckedAction(
             actions,
             ACTION_SIGN_IN,
-            getString(R.string.auth_sign_in_by_api_key),
-            getString(R.string.auth_sign_in_by_api_key_desc),
+            "Sign in with Email & Password",
+            "Enter your Immich server URL, email and password",
             true,
             1
         )

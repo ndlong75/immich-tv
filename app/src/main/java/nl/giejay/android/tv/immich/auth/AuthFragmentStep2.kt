@@ -10,7 +10,11 @@ import androidx.leanback.widget.GuidedAction
 import androidx.leanback.widget.GuidedActionEditText
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.runBlocking
 import nl.giejay.android.tv.immich.R
+import nl.giejay.android.tv.immich.api.ApiClientFactory
+import nl.giejay.android.tv.immich.api.model.LoginRequest
+import nl.giejay.android.tv.immich.api.service.ApiService
 import nl.giejay.android.tv.immich.shared.guidedstep.GuidedStepUtil.addAction
 import nl.giejay.android.tv.immich.shared.guidedstep.GuidedStepUtil.addCheckedAction
 import nl.giejay.android.tv.immich.shared.guidedstep.GuidedStepUtil.addEditableAction
@@ -20,27 +24,30 @@ import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.HOST_NAME
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ALBUMS
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
 
-
-data class AuthSettings(val hostName: String, val apiKey: String) {
+data class AuthSettings(val hostName: String, val email: String, val password: String) {
     fun isValid(): Boolean {
-        return PreferenceManager.isValid(hostName, apiKey)
+        return hostName.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+                && (hostName.startsWith("http://") || hostName.startsWith("https://"))
     }
 }
 
 class AuthFragmentStep2 : GuidedStepSupportFragment() {
-    private val ACTION_NAME = 0L
-    private val ACTION_API_KEY = 1L
-    private val ACTION_CHECK_CERTS = 2L
-    private val ACTION_DEBUG_MODE = 3L
-    private val ACTION_CONTINUE = 4L
+    private val ACTION_HOST = 0L
+    private val ACTION_EMAIL = 1L
+    private val ACTION_PASSWORD = 2L
+    private val ACTION_CHECK_CERTS = 3L
+    private val ACTION_DEBUG_MODE = 4L
+    private val ACTION_CONTINUE = 5L
 
     override fun onCreateGuidance(savedInstanceState: Bundle?): GuidanceStylist.Guidance {
         val icon: Drawable = requireContext().getDrawable(R.drawable.icon)!!
         return GuidanceStylist.Guidance(
             getString(R.string.app_name),
-            getString(R.string.login_immich_description),
+            "Sign in with your Immich email and password",
             "",
             icon
         )
@@ -48,20 +55,26 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
 
     override fun onCreateActions(actions: MutableList<GuidedAction>, savedInstanceState: Bundle?) {
         val currentHost = PreferenceManager.get(HOST_NAME)
-        val currentKey = PreferenceManager.get(API_KEY)
         addEditableAction(
             actions,
-            ACTION_NAME,
+            ACTION_HOST,
             getString(R.string.server_url_hint),
             currentHost.ifEmpty { "http://192.168.10.2:2283" },
             InputType.TYPE_CLASS_TEXT
         )
         addEditableAction(
             actions,
-            ACTION_API_KEY,
-            getString(R.string.api_key_text),
-            currentKey,
-            InputType.TYPE_CLASS_TEXT
+            ACTION_EMAIL,
+            "Email",
+            "ndlong75@gmail.com",
+            InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        )
+        addEditableAction(
+            actions,
+            ACTION_PASSWORD,
+            "Password",
+            "nice",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         )
         addCheckedAction(
             actions,
@@ -84,42 +97,86 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         savedInstanceState: Bundle?
     ) {
         super.onCreateButtonActions(actions, savedInstanceState)
-        addAction(actions, ACTION_CONTINUE, getString(R.string.submit), "")
+        addAction(actions, ACTION_CONTINUE, "Sign In", "")
     }
 
     override fun onGuidedActionClicked(action: GuidedAction) {
         super.onGuidedActionClicked(action)
-        val entry = AuthSettings(getState(ACTION_NAME), getState(ACTION_API_KEY))
-        Timber.i("Clicked on ${action.title} in step 2, entry valid: ${entry.isValid()}")
-        if (action.id == ACTION_CONTINUE) {
-            if (entry.isValid()) {
-                PreferenceManager.save(SCREENSAVER_ALBUMS, emptySet())
-                PreferenceManager.save(API_KEY, entry.apiKey)
-                PreferenceManager.save(HOST_NAME, entry.hostName)
-                PreferenceManager.save(DISABLE_SSL_VERIFICATION, findActionById(ACTION_CHECK_CERTS)?.isChecked == true)
-                PreferenceManager.save(DEBUG_MODE, findActionById(ACTION_DEBUG_MODE)?.isChecked == true)
-                val navControl = findNavController()
-                navControl.navigate(AuthFragmentStep2Directions.actionGlobalHomeFragment(), NavOptions.Builder().setPopUpTo(R.id.authFragment, true).build())
-            } else if (entry.hostName.isEmpty()) {
-                Toast.makeText(activity, getString(R.string.enter_server_url), Toast.LENGTH_SHORT)
-                    .show()
-            } else if (entry.apiKey.isEmpty()) {
-                Toast.makeText(
-                    activity,
-                    getString(R.string.enter_api_key),
-                    Toast.LENGTH_LONG
-                ).show()
-            } else {
-                Toast.makeText(activity, getString(R.string.enter_valid_server_url), Toast.LENGTH_SHORT)
-                    .show()
+        if (action.id != ACTION_CONTINUE) return
+
+        val entry = AuthSettings(
+            getState(ACTION_HOST),
+            getState(ACTION_EMAIL),
+            getState(ACTION_PASSWORD)
+        )
+        Timber.i("Login attempt: host=${entry.hostName}, email=${entry.email}")
+
+        if (!entry.isValid()) {
+            val msg = when {
+                entry.hostName.isEmpty() -> getString(R.string.enter_server_url)
+                entry.email.isEmpty() -> "Please enter your email"
+                entry.password.isEmpty() -> "Please enter your password"
+                else -> getString(R.string.enter_valid_server_url)
             }
+            Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val disableSsl = findActionById(ACTION_CHECK_CERTS)?.isChecked == true
+        val debugMode = findActionById(ACTION_DEBUG_MODE)?.isChecked == true
+
+        // Attempt login
+        try {
+            val baseUrl = entry.hostName.trimEnd('/') + "/api/"
+            val client = ApiClientFactory.getUnauthClient(disableSsl)
+            val retrofit = Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+            val service = retrofit.create(ApiService::class.java)
+
+            var accessToken: String? = null
+            runBlocking {
+                val response = service.login(LoginRequest(entry.email, entry.password))
+                if (response.isSuccessful && response.body() != null) {
+                    accessToken = response.body()!!.accessToken
+                    Timber.i("Login successful: ${response.body()!!.name}")
+                } else {
+                    val errorMsg = when (response.code()) {
+                        401 -> "Wrong email or password"
+                        else -> "Login failed: ${response.code()}"
+                    }
+                    activity?.runOnUiThread {
+                        Toast.makeText(activity, errorMsg, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+
+            if (accessToken != null) {
+                // Save as "Bearer:<token>" so ApiClientFactory uses Authorization header
+                PreferenceManager.save(SCREENSAVER_ALBUMS, emptySet())
+                PreferenceManager.save(API_KEY, "Bearer:$accessToken")
+                PreferenceManager.save(HOST_NAME, entry.hostName.trimEnd('/'))
+                PreferenceManager.save(DISABLE_SSL_VERIFICATION, disableSsl)
+                PreferenceManager.save(DEBUG_MODE, debugMode)
+
+                val navControl = findNavController()
+                navControl.navigate(
+                    AuthFragmentStep2Directions.actionGlobalHomeFragment(),
+                    NavOptions.Builder().setPopUpTo(R.id.authFragment, true).build()
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Login failed")
+            Toast.makeText(activity, "Connection error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun getState(actionId: Long): String {
-        // there really does not seem to be a better way to handle hardware keyboard input or for example: adb shell input text myText
-        // https://github.com/giejay/Immich-Android-TV/issues/4
         val position = findActionPositionById(actionId)
-        return getActionItemView(position)?.findViewById<GuidedActionEditText>(R.id.guidedactions_item_description)?.text.toString()
+        return getActionItemView(position)
+            ?.findViewById<GuidedActionEditText>(R.id.guidedactions_item_description)
+            ?.text.toString()
     }
 }

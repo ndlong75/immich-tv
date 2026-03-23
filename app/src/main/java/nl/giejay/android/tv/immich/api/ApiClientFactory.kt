@@ -8,21 +8,34 @@ import okhttp3.OkHttpClient
 object ApiClientFactory {
 
     fun getClient(disableSsl: Boolean, apiKey: String, debugMode: Boolean): OkHttpClient {
-        val apiKeyInterceptor = interceptor(apiKey)
+        val authInterceptor = interceptor(apiKey)
         val builder = if (disableSsl)
             UnsafeOkHttpClient.unsafeOkHttpClient()
         else OkHttpClient.Builder()
-        builder.addInterceptor(apiKeyInterceptor)
+        builder.addInterceptor(authInterceptor)
         return if(debugMode){
             builder.addInterceptor(ResponseLoggingInterceptor()).build()
         } else
             builder.build()
     }
 
+    /** Client with no auth - used for login endpoint only */
+    fun getUnauthClient(disableSsl: Boolean): OkHttpClient {
+        val builder = if (disableSsl)
+            UnsafeOkHttpClient.unsafeOkHttpClient()
+        else OkHttpClient.Builder()
+        return builder.build()
+    }
+
     private fun interceptor(apiKey: String): Interceptor = Interceptor { chain ->
         val newRequest = chain.request().newBuilder()
-            .addHeader("x-api-key", apiKey.trim())
-            .build()
-        chain.proceed(newRequest)
+        // If apiKey starts with "Bearer:", use as Bearer token (from email/password login)
+        // Otherwise use as x-api-key (traditional API key auth)
+        if (apiKey.startsWith("Bearer:")) {
+            newRequest.addHeader("Authorization", "Bearer ${apiKey.removePrefix("Bearer:")}")
+        } else {
+            newRequest.addHeader("x-api-key", apiKey.trim())
+        }
+        chain.proceed(newRequest.build())
     }
 }
