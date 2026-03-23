@@ -73,9 +73,14 @@ class ScreenSaverService : DreamService(), MediaSliderListener {
         )
         apiClient = ApiClient.getClient(config)
         mediaSliderView = MediaSliderView(this)
+        val videoHeaders = if (apiKey.startsWith("Bearer:")) {
+            mapOf("Authorization" to "Bearer ${apiKey.removePrefix("Bearer:")}")
+        } else {
+            mapOf("x-api-key" to apiKey)
+        }
         mediaSliderView.setDefaultExoFactory(
             DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(mapOf("x-api-key" to apiKey))
+                .setDefaultRequestProperties(videoHeaders)
         )
         setContentView(mediaSliderView)
         isInteractive = true
