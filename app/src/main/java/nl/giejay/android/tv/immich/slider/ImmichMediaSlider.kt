@@ -27,9 +27,16 @@ class ImmichMediaSlider : MediaSliderFragment() {
             return
         }
 
+        val apiKey = PreferenceManager.get(API_KEY)
+        val headers = if (apiKey.startsWith("Bearer:")) {
+            mapOf("Authorization" to "Bearer ${apiKey.removePrefix("Bearer:")}")
+        } else {
+            mapOf("x-api-key" to apiKey)
+        }
+
         setDefaultExoFactory(
             DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(mapOf("x-api-key" to PreferenceManager.get(API_KEY)))
+                .setDefaultRequestProperties(headers)
         )
 
         loadMediaSliderView(bundle.config)
