@@ -47,18 +47,20 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
     }
 
     override fun onCreateActions(actions: MutableList<GuidedAction>, savedInstanceState: Bundle?) {
+        val currentHost = PreferenceManager.get(HOST_NAME)
+        val currentKey = PreferenceManager.get(API_KEY)
         addEditableAction(
             actions,
             ACTION_NAME,
             getString(R.string.server_url_hint),
-            PreferenceManager.get(HOST_NAME),
+            currentHost.ifEmpty { "http://192.168.10.2:2283" },
             InputType.TYPE_CLASS_TEXT
         )
         addEditableAction(
             actions,
             ACTION_API_KEY,
             getString(R.string.api_key_text),
-            PreferenceManager.get(API_KEY),
+            currentKey,
             InputType.TYPE_CLASS_TEXT
         )
         addCheckedAction(
