@@ -29,7 +29,7 @@ class ImmichMediaSlider : MediaSliderFragment() {
 
         setDefaultExoFactory(
             DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(mapOf("x-api-key" to PreferenceManager.get(API_KEY)))
+                .setDefaultRequestProperties(if (PreferenceManager.get(API_KEY).startsWith("Bearer:")) mapOf("Authorization" to "Bearer " + PreferenceManager.get(API_KEY).removePrefix("Bearer:")) else mapOf("x-api-key" to PreferenceManager.get(API_KEY)))
         )
 
         loadMediaSliderView(bundle.config)
