@@ -151,7 +151,16 @@ object PreferenceManager {
     }
 
     fun getAllMetaData(metaDataScreen: MetaDataScreen): List<MetaDataItem> {
-        return getMetaData(AlignOption.RIGHT, metaDataScreen) + getMetaData(AlignOption.LEFT, metaDataScreen)
+        val items = getMetaData(AlignOption.RIGHT, metaDataScreen) + getMetaData(AlignOption.LEFT, metaDataScreen)
+        if (items.isEmpty() && metaDataScreen == MetaDataScreen.VIEWER) {
+            // Default metadata for photo viewer: Date, City, Camera
+            return listOf(
+                MetaDataSliderItem(MetaDataType.DATE, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.CITY, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.CAMERA, AlignOption.RIGHT)
+            )
+        }
+        return items
     }
 
     fun hasMetaDataForScreen(metaDataScreen: MetaDataScreen, align: AlignOption): Boolean {
