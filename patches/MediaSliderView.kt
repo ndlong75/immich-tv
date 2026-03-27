@@ -118,30 +118,61 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
 
             // D-pad zoom/pan for images on Fire TV remote
+            // OK = cycle zoom (1x -> 2x -> 4x -> 1x)
+            // When zoomed: arrow keys pan in all 4 directions
             if (itemType == SliderItemType.IMAGE && !slideShowPlaying) {
                 val touchImage = getCurrentTouchImageView()
                 val isZoomed = touchImage != null && touchImage.currentZoom > 1.05f
-                when (event.keyCode) {
-                    KeyEvent.KEYCODE_DPAD_UP -> {
-                        if (touchImage != null) { touchImage.setZoom((touchImage.currentZoom * 1.5f).coerceAtMost(5f)); return true }
+
+                if (isZoomed && touchImage != null) {
+                    when (event.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_UP -> {
+                            val r = touchImage.zoomedRect
+                            touchImage.setScrollPosition(r.centerX(), (r.centerY() - 0.1f).coerceIn(0f, 1f))
+                            return true
+                        }
+                        KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            val r = touchImage.zoomedRect
+                            touchImage.setScrollPosition(r.centerX(), (r.centerY() + 0.1f).coerceIn(0f, 1f))
+                            return true
+                        }
+                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            val r = touchImage.zoomedRect
+                            touchImage.setScrollPosition((r.centerX() - 0.1f).coerceIn(0f, 1f), r.centerY())
+                            return true
+                        }
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            val r = touchImage.zoomedRect
+                            touchImage.setScrollPosition((r.centerX() + 0.1f).coerceIn(0f, 1f), r.centerY())
+                            return true
+                        }
+                        KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                            // Cycle: 2x -> 4x -> reset
+                            if (touchImage.currentZoom < 3f) {
+                                touchImage.setZoom(4f)
+                            } else {
+                                touchImage.resetZoom()
+                            }
+                            return true
+                        }
+                        KeyEvent.KEYCODE_BACK -> {
+                            touchImage.resetZoom()
+                            return true
+                        }
                     }
-                    KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        if (isZoomed && touchImage != null) { val z = touchImage.currentZoom / 1.5f; if (z <= 1.05f) touchImage.resetZoom() else touchImage.setZoom(z); return true }
-                    }
-                    KeyEvent.KEYCODE_DPAD_LEFT -> {
-                        if (isZoomed && touchImage != null) { val r = touchImage.zoomedRect; touchImage.setScrollPosition((r.centerX() - 0.1f).coerceIn(0f, 1f), r.centerY()); return true }
-                    }
-                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        if (isZoomed && touchImage != null) { val r = touchImage.zoomedRect; touchImage.setScrollPosition((r.centerX() + 0.1f).coerceIn(0f, 1f), r.centerY()); return true }
-                    }
-                    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                        if (isZoomed && touchImage != null) { touchImage.resetZoom(); return true }
+                }
+
+                // Not zoomed: OK = start zoom cycle (-> 2x)
+                if (!isZoomed && touchImage != null) {
+                    if (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER) {
+                        touchImage.setZoom(2f)
+                        return true
                     }
                 }
             }
 
-            // Original key handling
-            if ((event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
+            // Original key handling (slideshow, video, navigation)
+            if ((event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
                 if (itemType == SliderItemType.IMAGE) {
                     toggleSlideshow(true)
                 } else if (currentPlayerView != null) {
@@ -189,21 +220,15 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
     private fun getCurrentTouchImageView(): TouchImageView? {
         return try {
-            // ViewPager children: find the one currently displayed
             for (i in 0 until mPager.childCount) {
                 val child = mPager.getChildAt(i)
                 val touchImage = child.findViewById<TouchImageView>(R.id.mBigImage)
                 if (touchImage != null) {
-                    // Check if this child is the current page by matching layout position
-                    val lp = child.layoutParams
-                    if (lp is androidx.viewpager.widget.ViewPager.LayoutParams) {
-                        // The child at the current scroll position
-                        val childLeft = child.left
-                        val pagerScroll = mPager.scrollX
-                        val pagerWidth = mPager.width
-                        if (childLeft >= pagerScroll && childLeft < pagerScroll + pagerWidth) {
-                            return touchImage
-                        }
+                    val childLeft = child.left
+                    val pagerScroll = mPager.scrollX
+                    val pagerWidth = mPager.width
+                    if (childLeft >= pagerScroll && childLeft < pagerScroll + pagerWidth) {
+                        return touchImage
                     }
                 }
             }
