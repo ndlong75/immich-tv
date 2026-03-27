@@ -140,6 +140,7 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 }
             }
 
+            // Original key handling
             if ((event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
                 if (itemType == SliderItemType.IMAGE) {
                     toggleSlideshow(true)
@@ -150,15 +151,11 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
             } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN && itemType == SliderItemType.VIDEO && currentPlayerView != null) {
                 currentPlayerView!!.useController = true
                 currentPlayerView!!.showController()
-
-                // Ensure proper focus to fix highlighting issue on first open
                 currentPlayerView!!.post {
                     val progressView = currentPlayerView!!.findViewById<View>(R.id.exo_progress_layout)
                     progressView?.requestFocus()
-                    // Force a refresh of the focus state
                     progressView?.invalidate()
                 }
-
                 return super.dispatchKeyEvent(event)
             } else if (event.keyCode == KeyEvent.KEYCODE_BACK && itemType == SliderItemType.VIDEO && currentPlayerView != null && currentPlayerView!!.isControllerFullyVisible) {
                 currentPlayerView!!.hideController()
@@ -167,7 +164,6 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 if (event.keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
                     toggleSlideshow(true)
                 } else {
-                    // remove all current callbacks to prevent multiple runnables
                     mainHandler.removeCallbacks(goToNextAssetRunnable)
                     goToNextAsset()
                     return false
@@ -189,6 +185,10 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
         }
         return if (itemType == SliderItemType.IMAGE) false else super.dispatchKeyEvent(event)
+    }
+
+    private fun getCurrentTouchImageView(): TouchImageView? {
+        return try { mPager.findViewWithTag<View>("view${mPager.currentItem}")?.findViewById(R.id.mBigImage) } catch (e: Exception) { null }
     }
 
     private fun goToPreviousAsset() {
@@ -507,10 +507,5 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
             player.setMediaSource(mediaSource, 0L)
             player.prepare()
         }
-    
-    private fun getCurrentTouchImageView(): TouchImageView? {
-        return try { mPager.findViewWithTag<View>("view${mPager.currentItem}")?.findViewById(R.id.mBigImage) } catch (e: Exception) { null }
     }
-
-}
 }
