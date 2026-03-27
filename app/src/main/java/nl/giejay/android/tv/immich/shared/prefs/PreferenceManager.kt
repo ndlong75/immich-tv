@@ -153,11 +153,12 @@ object PreferenceManager {
     fun getAllMetaData(metaDataScreen: MetaDataScreen): List<MetaDataItem> {
         val items = getMetaData(AlignOption.RIGHT, metaDataScreen) + getMetaData(AlignOption.LEFT, metaDataScreen)
         if (items.isEmpty() && metaDataScreen == MetaDataScreen.VIEWER) {
-            // Default metadata for photo viewer: Date, City, Camera
+            // Default metadata for photo viewer
             return listOf(
-                MetaDataSliderItem(MetaDataType.DATE, AlignOption.RIGHT),
                 MetaDataSliderItem(MetaDataType.CITY, AlignOption.RIGHT),
-                MetaDataSliderItem(MetaDataType.CAMERA, AlignOption.RIGHT)
+                MetaDataSliderItem(MetaDataType.CAMERA, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.DATE, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.PEOPLE, AlignOption.RIGHT)
             )
         }
         return items
