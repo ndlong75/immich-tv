@@ -188,7 +188,27 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
     }
 
     private fun getCurrentTouchImageView(): TouchImageView? {
-        return try { mPager.findViewWithTag<View>("view${mPager.currentItem}")?.findViewById(R.id.mBigImage) } catch (e: Exception) { null }
+        return try {
+            // ViewPager children: find the one currently displayed
+            for (i in 0 until mPager.childCount) {
+                val child = mPager.getChildAt(i)
+                val touchImage = child.findViewById<TouchImageView>(R.id.mBigImage)
+                if (touchImage != null) {
+                    // Check if this child is the current page by matching layout position
+                    val lp = child.layoutParams
+                    if (lp is androidx.viewpager.widget.ViewPager.LayoutParams) {
+                        // The child at the current scroll position
+                        val childLeft = child.left
+                        val pagerScroll = mPager.scrollX
+                        val pagerWidth = mPager.width
+                        if (childLeft >= pagerScroll && childLeft < pagerScroll + pagerWidth) {
+                            return touchImage
+                        }
+                    }
+                }
+            }
+            null
+        } catch (e: Exception) { null }
     }
 
     private fun goToPreviousAsset() {
