@@ -171,6 +171,15 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 }
             }
 
+            // Menu button: toggle metadata overlay visibility
+            if (event.keyCode == KeyEvent.KEYCODE_MENU) {
+                val holder = findViewById<View>(R.id.meta_data_holder)
+                if (holder != null) {
+                    holder.visibility = if (holder.visibility == VISIBLE) GONE else VISIBLE
+                }
+                return true
+            }
+
             // Original key handling (slideshow, video, navigation)
             if ((event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
                 if (itemType == SliderItemType.IMAGE) {
