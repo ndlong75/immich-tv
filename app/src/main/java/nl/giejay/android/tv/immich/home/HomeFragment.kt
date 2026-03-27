@@ -130,9 +130,7 @@ class HomeFragment : BrowseSupportFragment() {
             Header(ImmichApplication.appContext!!.getString(R.string.random)) { RandomAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.people)) { PeopleFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.recent)) { RecentAssetsFragment() },
-            Header(ImmichApplication.appContext!!.getString(R.string.seasonal)) { SimilarTimeAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.folders)) { FolderFragment() },
-            Header(ImmichApplication.appContext!!.getString(R.string.edit)) { GridFragment(hideProgressBar = true) },
             Header(ImmichApplication.appContext!!.getString(R.string.settings)) { SettingsFragment() },
         )
     }
