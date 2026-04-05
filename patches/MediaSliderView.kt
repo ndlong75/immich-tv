@@ -180,14 +180,24 @@ class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 return true
             }
 
-            // Original key handling (slideshow, video, navigation)
+            // Play/Pause: toggle video play/pause OR slideshow
             if ((event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || event.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
-                if (itemType == SliderItemType.IMAGE) {
+                if (itemType == SliderItemType.VIDEO && currentPlayerView != null) {
+                    // Play/Pause the current video
+                    val player = currentPlayerInScope
+                    if (player != null) {
+                        if (player.isPlaying) player.pause() else player.play()
+                    }
+                    return true
+                } else {
+                    // Image: toggle slideshow
                     toggleSlideshow(true)
-                } else if (currentPlayerView != null) {
-                    return super.dispatchKeyEvent(event)
+                    return false
                 }
-                return false
+            // DPAD_CENTER/ENTER on video: toggle slideshow (auto-advance through videos)
+            } else if ((event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER) && itemType == SliderItemType.VIDEO) {
+                toggleSlideshow(true)
+                return true
             } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN && itemType == SliderItemType.VIDEO && currentPlayerView != null) {
                 currentPlayerView!!.useController = true
                 currentPlayerView!!.showController()
