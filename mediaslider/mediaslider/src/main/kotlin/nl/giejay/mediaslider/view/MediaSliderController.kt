@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -82,6 +83,17 @@ class MediaSliderController(
 
     fun initialize(config: MediaSliderConfiguration) {
         this.config = config
+    }
+
+    /** The zoomable image view of the page currently in view, or null for videos / not yet laid out. */
+    fun currentTouchImageView(): TouchImageView? =
+        (pager.findViewWithTag<View>("view${pager.currentItem}") as? ViewGroup)?.children?.firstOrNull() as? TouchImageView
+
+    /** Shows / hides the metadata overlay. Returns false if the overlay view is not present. */
+    fun toggleMetadataOverlay(): Boolean {
+        val holder = controllerRootView.findViewById<View>(R.id.meta_data_holder) ?: return false
+        holder.visibility = if (holder.isVisible) View.GONE else View.VISIBLE
+        return true
     }
 
     fun setCurrentPlayer(player: ExoPlayer?) {

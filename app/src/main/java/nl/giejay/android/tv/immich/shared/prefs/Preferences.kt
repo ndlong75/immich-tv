@@ -25,7 +25,7 @@ import nl.giejay.android.tv.immich.security.ApiKeyCipher
 import nl.giejay.mediaslider.transformations.GlideTransformations
 
 // general
-data object DISABLE_SSL_VERIFICATION : BooleanPref(false,
+data object DISABLE_SSL_VERIFICATION : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.disable_ssl),
     ImmichApplication.appContext!!.getString(R.string.disable_ssl_text)) {
     override fun key() = "disableSSLVerification"
@@ -276,7 +276,7 @@ data object SLIDER_ONLY_USE_THUMBNAILS : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.use_hd_thumbnails),
     ImmichApplication.appContext!!.getString(R.string.use_hd_thumbnails_text))
 
-data object SLIDER_MERGE_PORTRAIT_PHOTOS : BooleanPref(true,
+data object SLIDER_MERGE_PORTRAIT_PHOTOS : BooleanPref(false,
     ImmichApplication.appContext!!.getString(R.string.merge_portrait_photos),
     ImmichApplication.appContext!!.getString(R.string.merge_portrait_photos_desc))
 
@@ -341,7 +341,7 @@ data object ALBUMS_SORTING : EnumByTitlePref<AlbumsOrder>(AlbumsOrder.LAST_UPDAT
     }
 }
 
-data object PHOTOS_SORTING : EnumByTitlePref<PhotosOrder>(PhotosOrder.OLDEST_NEWEST,
+data object PHOTOS_SORTING : EnumByTitlePref<PhotosOrder>(PhotosOrder.NEWEST_OLDEST,
     ImmichApplication.appContext!!.getString(R.string.photos_in_albums),
     ImmichApplication.appContext!!.getString(R.string.photos_in_albums_desc_inside)) {
     override fun fromPrefValue(prefValue: String): PhotosOrder {

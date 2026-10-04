@@ -20,11 +20,21 @@ object ApiClientFactory {
             builder.build()
     }
 
+    fun getUnauthClient(disableSsl: Boolean): OkHttpClient {
+        val builder = if (disableSsl) UnsafeOkHttpClient.unsafeOkHttpClient() else OkHttpClient.Builder()
+        return builder.build()
+    }
+
+    /** Keys saved by the email/password login are stored as "Bearer:<accessToken>". */
+    fun authHeaders(apiKey: String): Map<String, String> =
+        if (apiKey.startsWith("Bearer:")) mapOf("Authorization" to "Bearer ${apiKey.removePrefix("Bearer:")}")
+        else mapOf("x-api-key" to apiKey.trim())
+
     private fun interceptor(apiKey: String): Interceptor = Interceptor { chain ->
         try {
-            val newRequest = chain.request().newBuilder()
-                .addHeader("x-api-key", apiKey.trim())
-                .build()
+            val newRequest = chain.request().newBuilder().apply {
+                authHeaders(apiKey).forEach { (k, v) -> addHeader(k, v) }
+            }.build()
             chain.proceed(newRequest)
         } catch (e: Exception) {
             Timber.e(e, "Error adding API key header, invalid format")

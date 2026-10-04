@@ -1,6 +1,8 @@
 package nl.giejay.android.tv.immich.assets
 
+import android.app.AlertDialog
 import android.os.Bundle
+import android.widget.Toast
 import android.view.View
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -78,7 +80,25 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
     }
 
     private fun excludeByTag() = { asset: Asset ->
-        asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true
+        (asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true) && asset.visibility != "archive" && asset.isArchived != true
+    }
+
+    override fun onItemLongClicked(card: Card) {
+        AlertDialog.Builder(requireContext())
+            .setItems(arrayOf("Archive")) { _, _ -> archive(card) }
+            .show()
+    }
+
+    private fun archive(card: Card) {
+        lifecycleScope.launch {
+            apiClient.archiveAsset(card.id).fold(
+                { Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show() },
+                {
+                    removeItem(card) { a -> a.id == card.id }
+                    Toast.makeText(requireContext(), "Archived", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
 
     override suspend fun loadData(): Either<String, List<Asset>> {

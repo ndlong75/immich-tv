@@ -2,6 +2,8 @@ package nl.giejay.android.tv.immich.api.service
 
 import nl.giejay.android.tv.immich.api.model.Album
 import nl.giejay.android.tv.immich.api.model.Asset
+import nl.giejay.android.tv.immich.api.model.LoginRequest
+import nl.giejay.android.tv.immich.api.model.LoginResponse
 import nl.giejay.android.tv.immich.api.model.Memory
 import nl.giejay.android.tv.immich.api.model.PeopleResponse
 import nl.giejay.android.tv.immich.api.model.SearchRequest
@@ -18,7 +20,12 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 
+data class BulkUpdateAssetsRequest(val ids: List<String>, val visibility: String)
+
 interface ApiService {
+    @POST("auth/login")
+    suspend fun login(@Body loginRequest: LoginRequest): Response<LoginResponse>
+
     @POST("search/metadata")
     suspend fun listAssets(@Body searchRequest: SearchRequest): Response<SearchResponse>
 
@@ -36,6 +43,9 @@ interface ApiService {
 
     @GET("people")
     suspend fun listPeople(): Response<PeopleResponse>
+
+    @PUT("assets")
+    suspend fun updateAssets(@Body request: BulkUpdateAssetsRequest): Response<Unit>
 
     @PUT("assets/{id}")
     suspend fun updateAsset(@Path("id") id: String, @Body request: UpdateAssetRequest): Response<Asset>

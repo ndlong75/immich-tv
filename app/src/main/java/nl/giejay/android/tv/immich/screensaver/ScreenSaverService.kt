@@ -35,7 +35,7 @@ class ScreenSaverService : DreamService(), MediaSliderListener, ScreenSaverAsset
         mediaSliderView = MediaSliderView(this)
         mediaSliderView!!.setDefaultExoFactory(
             DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(mapOf("x-api-key" to apiKey))
+                .setDefaultRequestProperties(if (apiKey.startsWith("Bearer:")) mapOf("Authorization" to "Bearer " + apiKey.removePrefix("Bearer:")) else mapOf("x-api-key" to apiKey))
         )
         setContentView(mediaSliderView)
         isInteractive = true

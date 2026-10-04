@@ -15,6 +15,7 @@ import nl.giejay.mediaslider.adapter.MetaDataSliderItem
 import nl.giejay.mediaslider.model.MetaDataType
 import nl.giejay.mediaslider.plugin.DateOverlayViewPlugin
 import nl.giejay.mediaslider.plugin.ExternalPlayerButtonControllerPlugin
+import nl.giejay.mediaslider.plugin.ImmichRemoteKeyEventPlugin
 import nl.giejay.mediaslider.plugin.MediaRemoteControlsKeyEventPlugin
 import nl.giejay.mediaslider.plugin.MetadataViewPlugin
 import nl.giejay.mediaslider.plugin.SliderControllerPlugin
@@ -180,7 +181,17 @@ object PreferenceManager {
     }
 
     fun getAllMetaData(metaDataScreen: MetaDataScreen): List<MetaDataItem> {
-        return getMetaData(AlignOption.RIGHT, metaDataScreen) + getMetaData(AlignOption.LEFT, metaDataScreen)
+        val items = getMetaData(AlignOption.RIGHT, metaDataScreen) + getMetaData(AlignOption.LEFT, metaDataScreen)
+        if (items.isEmpty() && metaDataScreen == MetaDataScreen.VIEWER) {
+            // Default metadata for photo viewer
+            return listOf(
+                MetaDataSliderItem(MetaDataType.CITY, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.CAMERA, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.DATE, AlignOption.RIGHT),
+                MetaDataSliderItem(MetaDataType.PEOPLE, AlignOption.RIGHT)
+            )
+        }
+        return items
     }
 
     fun hasMetaDataForScreen(metaDataScreen: MetaDataScreen, align: AlignOption): Boolean {
@@ -203,7 +214,7 @@ object PreferenceManager {
                 metadataPlugin
             ),
             viewPlugins = listOf(metadataPlugin, DateOverlayViewPlugin()),
-            keyEventPlugins = listOf(remoteControlsPlugin)
+            keyEventPlugins = listOf(ImmichRemoteKeyEventPlugin(), remoteControlsPlugin)
         )
     }
 

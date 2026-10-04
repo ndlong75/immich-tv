@@ -33,5 +33,7 @@ data class Asset(
     val tags: List<Tag>?,
     val originalPath: String?,
     val originalFileName: String?,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val visibility: String? = null,
+    val isArchived: Boolean? = null
 )

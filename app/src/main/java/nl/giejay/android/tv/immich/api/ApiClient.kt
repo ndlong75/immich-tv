@@ -18,6 +18,7 @@ import nl.giejay.android.tv.immich.api.model.TimeBucketSummary
 import nl.giejay.android.tv.immich.api.model.TimelineAsset
 import nl.giejay.android.tv.immich.api.model.toTimelineAssets
 import nl.giejay.android.tv.immich.api.service.ApiService
+import nl.giejay.android.tv.immich.api.service.BulkUpdateAssetsRequest
 import nl.giejay.android.tv.immich.api.util.ApiUtil.executeAPICall
 import nl.giejay.android.tv.immich.shared.prefs.API_KEY
 import nl.giejay.android.tv.immich.shared.prefs.ContentType
@@ -125,6 +126,15 @@ class ApiClient(private val config: ApiClientConfig) {
         return executeAPICall(200) { service.listAlbums(assetId.getOrNull()) }
     }
 
+    suspend fun archiveAsset(assetId: String): Either<String, Unit> {
+        return try {
+            val res = service.updateAssets(BulkUpdateAssetsRequest(listOf(assetId), "archive"))
+            if (res.isSuccessful) Either.Right(Unit) else Either.Left("Could not archive asset, status: ${res.code()}")
+        } catch (e: Exception) {
+            Either.Left("Could not archive asset: ${e.message}")
+        }
+    }
+
     suspend fun listPeople(): Either<String, List<Person>> {
         return executeAPICall(200) { service.listPeople() }.map { response -> response.people.filter { !it.name.isNullOrBlank() } }
     }
@@ -226,7 +236,7 @@ class ApiClient(private val config: ApiClientConfig) {
     }
 
     private fun excludeByTag() = { asset: Asset ->
-        asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true
+        (asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true) && asset.visibility != "archive" && asset.isArchived != true
     }
 
     suspend fun listFolders(): Either<String, Folder> {
