@@ -78,6 +78,12 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
 
     abstract fun onItemSelected(card: Card, indexOf: Int)
     abstract fun onItemClicked(card: Card)
+    protected open fun onItemLongClicked(card: Card) {}
+
+    protected fun removeItem(card: Card, matches: (ITEM) -> Boolean) {
+        adapter.remove(card)
+        assets = assets.filterNot(matches)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -241,7 +247,7 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
         val presenter = VerticalGridPresenter(ZOOM_FACTOR)
         presenter.numberOfColumns = COLUMNS
         gridPresenter = presenter
-        val cardPresenter = CardPresenterSelector(requireContext())
+        val cardPresenter = CardPresenterSelector(requireContext()) { onItemLongClicked(it as Card) }
         adapter = ArrayObjectAdapter(cardPresenter)
     }
 

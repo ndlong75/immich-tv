@@ -13,6 +13,7 @@ import nl.giejay.android.tv.immich.api.model.Folder
 import nl.giejay.android.tv.immich.api.model.Person
 import nl.giejay.android.tv.immich.api.model.SearchRequest
 import nl.giejay.android.tv.immich.api.service.ApiService
+import nl.giejay.android.tv.immich.api.service.BulkUpdateAssetsRequest
 import nl.giejay.android.tv.immich.api.util.ApiUtil.executeAPICall
 import nl.giejay.android.tv.immich.shared.prefs.ContentType
 import nl.giejay.android.tv.immich.shared.prefs.EXCLUDE_ASSETS_IN_ALBUM
@@ -62,6 +63,15 @@ class ApiClient(private val config: ApiClientConfig) {
             return executeAPICall(200) { service.listAlbums(true, assetId.getOrNull()) }.map { sharedAlbums ->
                 albums + sharedAlbums
             }
+        }
+    }
+
+    suspend fun archiveAsset(assetId: String): Either<String, Unit> {
+        return try {
+            val res = service.updateAssets(BulkUpdateAssetsRequest(listOf(assetId), "archive"))
+            if (res.isSuccessful) Either.Right(Unit) else Either.Left("Could not archive asset, status: ${res.code()}")
+        } catch (e: Exception) {
+            Either.Left("Could not archive asset: ${e.message}")
         }
     }
 

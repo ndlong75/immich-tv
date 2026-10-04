@@ -3,6 +3,7 @@ package nl.giejay.android.tv.immich.card
 import android.app.Activity
 import android.content.Context
 import android.view.ContextThemeWrapper
+import android.view.View
 import android.widget.ImageView
 import androidx.leanback.widget.ImageCardView
 import com.bumptech.glide.Glide
@@ -11,13 +12,14 @@ import nl.giejay.android.tv.immich.shared.presenter.AbstractPresenter
 import timber.log.Timber
 
 
-open class CardPresenter(context: Context, style: Int = R.style.DefaultCardTheme) :
+open class CardPresenter(context: Context, style: Int = R.style.DefaultCardTheme, private val onLongClick: ((ICard) -> Unit)? = null) :
     AbstractPresenter<ImageCardView, ICard>(ContextThemeWrapper(context, style)) {
 
     override fun onBindViewHolder(card: ICard, cardView: ImageCardView) {
         loadImage(card, cardView)
 
         cardView.tag = card
+        cardView.setOnLongClickListener(onLongClick?.let { cb -> View.OnLongClickListener { cb(card); true } })
         cardView.titleText = card.title
         if (card.description != "") {
             cardView.contentText = card.description

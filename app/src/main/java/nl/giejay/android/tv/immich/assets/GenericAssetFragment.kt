@@ -1,6 +1,10 @@
 package nl.giejay.android.tv.immich.assets
 
+import android.app.AlertDialog
 import android.os.Bundle
+import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
 import nl.giejay.android.tv.immich.album.AlbumDetailsFragmentDirections
 import nl.giejay.android.tv.immich.api.model.Asset
@@ -67,6 +71,24 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
 
     override fun onItemSelected(card: Card, indexOf: Int) {
         // no use case yet
+    }
+
+    override fun onItemLongClicked(card: Card) {
+        AlertDialog.Builder(requireContext())
+            .setItems(arrayOf("Archive")) { _, _ -> archive(card) }
+            .show()
+    }
+
+    private fun archive(card: Card) {
+        lifecycleScope.launch {
+            apiClient.archiveAsset(card.id).fold(
+                { Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show() },
+                {
+                    removeItem(card) { a -> a.id == card.id }
+                    Toast.makeText(requireContext(), "Archived", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
 
     open fun showMediaCount(): Boolean {

@@ -14,9 +14,12 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
+
+data class BulkUpdateAssetsRequest(val ids: List<String>, val visibility: String)
 
 interface ApiService {
     @POST("auth/login")
@@ -45,6 +48,9 @@ interface ApiService {
 
     @GET("timeline/bucket")
     suspend fun getBucketV2(@Query("albumId") albumId: String, @Query("timeBucket") timeBucket: String, @Query("size") size: String = "MONTH",  @Query("order") order: String = "desc"): Response<BucketResponse>
+
+    @PUT("assets")
+    suspend fun updateAssets(@Body request: BulkUpdateAssetsRequest): Response<Unit>
 
     @GET("assets/{id}")
     suspend fun getAsset(@Path("id") id: String): Response<Asset>
