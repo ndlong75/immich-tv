@@ -413,6 +413,10 @@ class TimelineFragment : BrandedSupportFragment(), BrowseSupportFragment.MainFra
                 TimelineJump.scrollPending = false
                 return@postDelayed
             }
+            // Restore refuses to run while the side menu is open, so close it ourselves.
+            (parentFragment as? BrowseSupportFragment)?.let { browse ->
+                if (browse.isShowingHeaders && !browse.isInHeadersTransition) browse.startHeadersTransition(false)
+            }
             if ((mosaicAdapter?.positionOfAsset(assetId) ?: -1) < 0) loadJumpTargetMonth()
             selectionRestored = false
             restoreSelectionIfNeeded()

@@ -25,6 +25,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.navigation.NavOptions
 import androidx.navigation.fragment.findNavController
 import nl.giejay.android.tv.immich.R
 import nl.giejay.android.tv.immich.shared.prefs.API_KEY
@@ -59,8 +60,12 @@ class ImmichMediaSlider : MediaSliderFragment() {
         )
         TimelineJump.requested = true
         TimelineJump.scrollPending = true
-        val nav = findNavController()
-        if (!nav.popBackStack(R.id.homeFragment, false)) nav.navigate(R.id.homeFragment)
+        // A fresh Home always starts on its first page (Timeline); the old instance kept the People tab.
+        findNavController().navigate(
+            R.id.homeFragment,
+            null,
+            NavOptions.Builder().setPopUpTo(R.id.homeFragment, true).build()
+        )
     }
 
     @SuppressLint("UnsafeOptInUsageError")
