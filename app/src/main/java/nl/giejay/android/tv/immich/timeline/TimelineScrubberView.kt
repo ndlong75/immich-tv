@@ -35,9 +35,6 @@ class TimelineScrubberView @JvmOverloads constructor(
      */
     var onCommit: ((monthKey: String, exitToMosaic: Boolean) -> Unit)? = null
 
-    /** Fired when Right is pressed on the rail (e.g. to open a settings menu). */
-    var onRightEdge: (() -> Unit)? = null
-
     /** Fired when Up/Down moves the preview badge without committing. */
     var onPreviewMoved: (() -> Unit)? = null
 
@@ -235,10 +232,7 @@ class TimelineScrubberView @JvmOverloads constructor(
                 commitSelection(exitToMosaic = false)
                 return true
             }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                onRightEdge?.invoke()
-                return true
-            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> return true
         }
         return super.onKeyDown(keyCode, event)
     }

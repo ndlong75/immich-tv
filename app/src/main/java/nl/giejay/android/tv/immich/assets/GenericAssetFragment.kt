@@ -6,14 +6,10 @@ import java.time.ZoneId
 import java.time.YearMonth
 import java.time.LocalTime
 import java.time.LocalDateTime
-import nl.giejay.android.tv.immich.timeline.TimelineScrubberView
 import nl.giejay.android.tv.immich.timeline.TimelineDatePicker
 import nl.giejay.android.tv.immich.api.model.TimeBucketSummary
 import nl.giejay.android.tv.immich.api.ApiClient
 import nl.giejay.android.tv.immich.R
-import android.widget.FrameLayout
-import android.view.ViewGroup
-import android.view.Gravity
 import android.app.Dialog
 import android.widget.Toast
 import android.view.View
@@ -144,14 +140,10 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
     }
 
     override fun onItemSelected(card: Card, indexOf: Int) {
-        val scrubber = dateScrubber ?: return
-        if (scrubber.hasFocus()) return
-        val asset = assets.firstOrNull { it.id == card.id } ?: return
-        val date = asset.exifInfo?.dateTimeOriginal ?: asset.fileCreatedAt ?: asset.fileModifiedAt ?: return
-        scrubber.setIndicatorMonthKey("${YearMonth.from(date.toInstant().atZone(ZoneId.systemDefault()))}-01")
+        // no use case yet
     }
 
-    // ---- Date navigation (chronological lists): year/month picker on Menu + right-edge month rail.
+    // ---- Date navigation (chronological lists): year/month picker on the Menu button.
 
     /** Month buckets for this list, newest first; null (default) turns date navigation off. */
     protected open suspend fun loadDateBuckets(apiClient: ApiClient): List<TimeBucketSummary>? = null
@@ -168,7 +160,6 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
         jumpMonth?.takeIf { currentSort == PhotosOrder.NEWEST_OLDEST }?.atEndOfMonth()?.atTime(LocalTime.MAX)
 
     private var dateBuckets: List<TimeBucketSummary> = emptyList()
-    private var dateScrubber: TimelineScrubberView? = null
     private var datePicker: Dialog? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -176,24 +167,8 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
         if (!PreferenceManager.isLoggedId()) return
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val buckets = loadDateBuckets(apiClient)?.takeIf { it.isNotEmpty() } ?: return@launch
-            withContext(Dispatchers.Main) {
-                if (isAdded && dateScrubber == null) installDateScrubber(view, buckets)
-            }
+            withContext(Dispatchers.Main) { dateBuckets = buckets }
         }
-    }
-
-    private fun installDateScrubber(root: View, buckets: List<TimeBucketSummary>) {
-        dateBuckets = buckets
-        val scrubber = TimelineScrubberView(requireContext())
-        scrubber.setBuckets(buckets)
-        scrubber.onCommit = { monthKey, exitToGrid ->
-            jumpToMonth(monthKey)
-            if (exitToGrid) focusGrid()
-        }
-        scrubber.onRightEdge = { openSettings() }
-        val width = (80 * resources.displayMetrics.density).toInt()
-        (root as ViewGroup).addView(scrubber, FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END))
-        dateScrubber = scrubber
     }
 
     private fun jumpToMonth(bucketKey: String) {
@@ -218,13 +193,7 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
         return false
     }
 
-    /** Right edge of the grid: go to the month rail when there is one, otherwise open the settings. */
     override fun openPopUpMenu() {
-        val scrubber = dateScrubber
-        if (scrubber != null && !scrubber.hasFocus()) scrubber.requestFocus() else openSettings()
-    }
-
-    protected open fun openSettings() {
         findNavController().navigate(
             HomeFragmentDirections.actionGlobalToSettingsDialog("generic_asset_settings")
         )

@@ -93,7 +93,7 @@ On top of upstream Immich Android TV (v6.1.0):
 - **Archive**: long-press a photo in a grid to archive it. Archived photos are hidden everywhere in the app.
 - **Photo viewer**: OK zooms (1x, 2x, 4x), arrows pan while zoomed. Up or Menu opens an info panel with date, location, camera, exposure, resolution and size, avatars of the people in the photo (OK opens that person) and "Show in timeline".
 - **People tab** shows the photo count next to each name.
-- **Timeline**: the Menu button opens "Jump to date" (years, then months).
+- **Timeline** and the Photos, person and album lists: the Menu button opens "Jump to date" (years, then months).
 - Defaults: SSL verification off, no portrait merging, newest first; Recent, Seasonal and Edit tabs are hidden.
 - CI builds a debug APK signed with a fixed, public key (`app/debug.keystore`), so new builds update in place.
 

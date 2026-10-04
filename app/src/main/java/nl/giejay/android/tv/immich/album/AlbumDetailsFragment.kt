@@ -44,7 +44,7 @@ class AlbumDetailsFragment : GenericAssetFragment() {
 
     override suspend fun loadDateBuckets(apiClient: ApiClient) = apiClient.getTimeBuckets(albumId = albumId).getOrNull()
 
-    override fun openSettings() {
+    override fun openPopUpMenu() {
         findNavController().navigate(
             HomeFragmentDirections.actionGlobalToSettingsDialog("album_details", albumId, albumName)
         )
