@@ -15,8 +15,13 @@ android {
         applicationId "nl.giejay.android.tv.immich"
         minSdkVersion 24
         targetSdkVersion 37
-        versionCode 156
-        versionName "6.1.9"
+        versionCode 157
+        versionName "6.1.10"
+
+        // Fire TV / Android TV boxes are ARM only; dropping x86 roughly halves the APK.
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testOptions.unitTests.includeAndroidResources = true
