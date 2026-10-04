@@ -13,14 +13,19 @@ import nl.giejay.mediaslider.model.SliderItemType
 class ImmichRemoteKeyEventPlugin : SliderKeyEventPlugin {
 
     override fun onKeyDown(event: KeyEvent, state: SliderKeyEventState): SliderKeyEventResult {
+        val isOk = event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER
         if (event.keyCode == KeyEvent.KEYCODE_MENU) {
-            return if (state.controller.toggleMetadataOverlay()) SliderKeyEventResult.HANDLED_CONSUME else SliderKeyEventResult.UNHANDLED
+            val ok = state.controller.toggleMetadataOverlay()
+            state.controller.debugToast("DIAG MENU holder=${if (ok) "found" else "MISSING"}")
+            return if (ok) SliderKeyEventResult.HANDLED_CONSUME else SliderKeyEventResult.UNHANDLED
+        }
+        if (isOk) {
+            state.controller.debugToast("DIAG OK type=${state.currentItemType} slideshow=${state.isSlideshowPlaying} controller=${state.isControllerVisible} img=${state.controller.currentTouchImageView()?.currentZoom}")
         }
         if (state.currentItemType != SliderItemType.IMAGE || state.isSlideshowPlaying || state.isControllerVisible) {
             return SliderKeyEventResult.UNHANDLED
         }
         val image = state.controller.currentTouchImageView() ?: return SliderKeyEventResult.UNHANDLED
-        val isOk = event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER
 
         if (image.currentZoom <= 1.05f) {
             if (isOk) {

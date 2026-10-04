@@ -86,8 +86,22 @@ class MediaSliderController(
     }
 
     /** The zoomable image view of the page currently in view, or null for videos / not yet laid out. */
-    fun currentTouchImageView(): TouchImageView? =
-        (pager.findViewWithTag<View>("view${pager.currentItem}") as? ViewGroup)?.children?.firstOrNull() as? TouchImageView
+    fun currentTouchImageView(): TouchImageView? {
+        (pager.findViewWithTag<View>("view${pager.currentItem}") as? ViewGroup)
+            ?.findViewById<TouchImageView>(R.id.mBigImage)?.let { return it }
+        // Fallback: the page whose left edge is inside the visible scroll window.
+        for (i in 0 until pager.childCount) {
+            val child = pager.getChildAt(i)
+            val image = child.findViewById<TouchImageView>(R.id.mBigImage) ?: continue
+            if (child.left >= pager.scrollX && child.left < pager.scrollX + pager.width) return image
+        }
+        return null
+    }
+
+    /** TEMPORARY: on-screen diagnostics for key handling. */
+    fun debugToast(message: String) {
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     /** Shows / hides the metadata overlay. Returns false if the overlay view is not present. */
     fun toggleMetadataOverlay(): Boolean {
