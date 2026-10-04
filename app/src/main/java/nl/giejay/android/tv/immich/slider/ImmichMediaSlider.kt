@@ -58,6 +58,7 @@ class ImmichMediaSlider : MediaSliderFragment() {
             TimelineLeaveOff.Snapshot(memoryId = null, pendingAssetId = item.id, lastAssetId = item.id, allowScrollAdjust = true)
         )
         TimelineJump.requested = true
+        TimelineJump.scrollPending = true
         val nav = findNavController()
         if (!nav.popBackStack(R.id.homeFragment, false)) nav.navigate(R.id.homeFragment)
     }

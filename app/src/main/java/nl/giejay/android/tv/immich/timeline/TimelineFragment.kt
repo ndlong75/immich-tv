@@ -396,6 +396,42 @@ class TimelineFragment : BrandedSupportFragment(), BrowseSupportFragment.MainFra
             selectionRestored = false
         }
         restoreSelectionIfNeeded()
+        if (TimelineJump.scrollPending) retryPendingJump(attemptsLeft = 40)
+    }
+
+    /**
+     * "Show in timeline" from the viewer: the side menu may still be closing and the target month
+     * may not be loaded yet, so keep loading the month and re-running the restore until the asset
+     * is focused (which clears [TimelineViewModel.pendingResumeAssetId]).
+     */
+    private fun retryPendingJump(attemptsLeft: Int) {
+        val rv = recyclerView ?: return
+        rv.postDelayed({
+            if (!isAdded || recyclerView == null) return@postDelayed
+            val assetId = viewModel.pendingResumeAssetId
+            if (assetId == null || attemptsLeft <= 0) {
+                TimelineJump.scrollPending = false
+                return@postDelayed
+            }
+            if ((mosaicAdapter?.positionOfAsset(assetId) ?: -1) < 0) loadJumpTargetMonth()
+            selectionRestored = false
+            restoreSelectionIfNeeded()
+            retryPendingJump(attemptsLeft - 1)
+        }, 250)
+    }
+
+    private fun loadJumpTargetMonth() {
+        val dayKey = viewModel.lastSelectedDayKey ?: return
+        val buckets = viewModel.buckets.value
+        if (buckets.isEmpty()) return
+        lifecycleScope.launch(Dispatchers.IO) {
+            val key = viewModel.resolveBucketKey(dayKey) ?: return@launch
+            viewModel.loadBucket(key)
+            val index = buckets.indexOfFirst { it.timeBucket == key }
+            // Immich buckets are UTC months, the day key is local: also load the neighbours.
+            buckets.getOrNull(index - 1)?.let { viewModel.loadBucket(it.timeBucket) }
+            buckets.getOrNull(index + 1)?.let { viewModel.loadBucket(it.timeBucket) }
+        }
     }
 
     override fun onPause() {
