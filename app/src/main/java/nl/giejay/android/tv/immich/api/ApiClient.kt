@@ -22,6 +22,7 @@ import nl.giejay.android.tv.immich.api.service.BulkUpdateAssetsRequest
 import nl.giejay.android.tv.immich.api.util.ApiUtil.executeAPICall
 import nl.giejay.android.tv.immich.shared.prefs.API_KEY
 import nl.giejay.android.tv.immich.shared.prefs.ContentType
+import nl.giejay.android.tv.immich.shared.util.Utils.pmap
 import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.EXCLUDE_ASSETS_IN_ALBUM
@@ -136,7 +137,11 @@ class ApiClient(private val config: ApiClientConfig) {
     }
 
     suspend fun listPeople(): Either<String, List<Person>> {
-        return executeAPICall(200) { service.listPeople() }.map { response -> response.people.filter { !it.name.isNullOrBlank() } }
+        return executeAPICall(200) { service.listPeople() }.map { response ->
+            response.people.filter { !it.name.isNullOrBlank() }.pmap { person ->
+                person.copy(assetCount = executeAPICall(200) { service.personStatistics(person.id.toString()) }.getOrNull()?.assets)
+            }
+        }
     }
 
     suspend fun listAssetsFromAlbum(albumIds: List<String>,

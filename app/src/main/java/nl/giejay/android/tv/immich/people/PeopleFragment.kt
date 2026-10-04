@@ -35,7 +35,7 @@ class PeopleFragment : VerticalCardGridFragment<Person>() {
         findNavController().navigate(
             HomeFragmentDirections.actionHomeFragmentToPersonAssetsFragment(
                 card.id,
-                card.title
+                assets.firstOrNull { it.id.toString() == card.id }?.name ?: card.title
             )
         )
     }
@@ -46,7 +46,7 @@ class PeopleFragment : VerticalCardGridFragment<Person>() {
 
     override fun createCard(a: Person): Card {
         return Card(
-            a.name ?: "Unknown",
+            (a.name ?: "Unknown") + (a.assetCount?.let { " ($it)" } ?: ""),
             "",
             a.id.toString(),
             ApiUtil.getPersonThumbnail(a.id),

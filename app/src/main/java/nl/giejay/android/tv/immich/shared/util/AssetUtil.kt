@@ -1,6 +1,7 @@
 package nl.giejay.android.tv.immich.shared.util
 
 import nl.giejay.mediaslider.model.SliderItem
+import nl.giejay.mediaslider.model.SliderPerson
 import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.android.tv.immich.api.util.ApiUtil
@@ -91,7 +92,9 @@ fun Asset.toSliderItem(): SliderItem {
         AssetMetaDataMapping.providersFor(this),
         ApiUtil.getThumbnailUrl(this.id, "preview", PreferenceManager.get(SLIDER_LOAD_EDITED_PHOTO)),
         isPanorama = this.isPanoramaImage(),
-        isFavorite = this.isFavorite
+        isFavorite = this.isFavorite,
+        people = this.people.orEmpty().map { SliderPerson(it.id.toString(), it.name) },
+        takenAt = (this.exifInfo?.dateTimeOriginal ?: this.fileCreatedAt ?: this.fileModifiedAt)?.time
     )
 }
 

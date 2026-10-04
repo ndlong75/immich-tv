@@ -30,6 +30,7 @@ import nl.giejay.android.tv.immich.shared.fragment.GridFragment
 import nl.giejay.android.tv.immich.shared.prefs.HIDDEN_HOME_ITEMS
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.timeline.TimelineFragment
+import nl.giejay.android.tv.immich.timeline.TimelineJump
 import timber.log.Timber
 
 class HomeFragment : BrowseSupportFragment() {
@@ -82,6 +83,20 @@ class HomeFragment : BrowseSupportFragment() {
                     this.startHeadersTransition(false)
 //                    this.mainFragment.requireView().requestFocus()
                 }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (TimelineJump.requested) {
+            TimelineJump.requested = false
+            val index = (0 until mRowsAdapter.size()).firstOrNull {
+                (mRowsAdapter.get(it) as Row).headerItem.name == getString(R.string.timeline)
+            } ?: return
+            view?.post {
+                setSelectedPosition(index, false)
+                if (isShowingHeaders && !isInHeadersTransition) startHeadersTransition(false)
             }
         }
     }
@@ -141,7 +156,6 @@ class HomeFragment : BrowseSupportFragment() {
             Header(ImmichApplication.appContext!!.getString(R.string.photos)) { AllAssetFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.random)) { RandomAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.people)) { PeopleFragment() },
-            Header(ImmichApplication.appContext!!.getString(R.string.recent)) { RecentAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.folders)) { FolderFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.settings)) { SettingsFragment() },
         )

@@ -5,8 +5,11 @@ import java.util.UUID
 data class Person(
     val name: String?,
     val id: UUID,
-    val thumbnailPath: String
+    val thumbnailPath: String,
+    val assetCount: Int? = null
 )
+
+data class PersonStatistics(val assets: Int)
 
 data class PeopleResponse(val total: Int,
                           val hasNextPage: Boolean,

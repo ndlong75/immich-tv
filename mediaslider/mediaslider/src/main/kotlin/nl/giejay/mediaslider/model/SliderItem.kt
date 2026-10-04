@@ -10,6 +10,8 @@ class StaticMetaDataProvider(private val value: String?) : MetaDataProvider {
     override suspend fun getValue(): String? = value
 }
 
+data class SliderPerson(val id: String, val name: String?)
+
 class SliderItem(
     var id: String,
     val url: String?,
@@ -18,7 +20,10 @@ class SliderItem(
     private val metaData: Map<MetaDataType, MetaDataProvider>,
     val thumbnailUrl: String?,
     val isPanorama: Boolean,
-    var isFavorite: Boolean = false
+    var isFavorite: Boolean = false,
+    val people: List<SliderPerson> = emptyList(),
+    /** Capture time in epoch millis, used to jump to the matching day in the timeline. */
+    val takenAt: Long? = null
 ) {
     suspend fun get(metaDataType: MetaDataType): String? {
         return this.metaData[metaDataType]?.getValue()

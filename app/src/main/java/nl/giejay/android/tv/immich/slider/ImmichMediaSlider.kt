@@ -3,6 +3,21 @@ package nl.giejay.android.tv.immich.slider
 import nl.giejay.android.tv.immich.api.ApiClientFactory
 import android.annotation.SuppressLint
 import android.os.Bundle
+import androidx.core.os.bundleOf
+import androidx.lifecycle.ViewModelProvider
+import nl.giejay.android.tv.immich.api.ApiClient
+import nl.giejay.android.tv.immich.api.ApiClientConfig
+import nl.giejay.android.tv.immich.api.util.ApiUtil
+import nl.giejay.android.tv.immich.timeline.TimelineJump
+import nl.giejay.android.tv.immich.timeline.TimelineLeaveOff
+import nl.giejay.android.tv.immich.timeline.TimelineViewModel
+import nl.giejay.android.tv.immich.timeline.TimelineViewModelFactory
+import nl.giejay.mediaslider.model.SliderItem
+import nl.giejay.mediaslider.model.SliderPerson
+import nl.giejay.mediaslider.plugin.InfoPanelPlugin
+import java.time.Instant
+import java.time.ZoneId
+import java.util.UUID
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +42,23 @@ class ImmichMediaSlider : MediaSliderFragment() {
         savedInstanceState: Bundle?
     ): View {
         return MediaSliderView(requireContext())
+    }
+
+    private fun showInTimeline(item: SliderItem, apiClient: ApiClient) {
+        val takenAt = item.takenAt
+        if (takenAt == null) {
+            Toast.makeText(requireContext(), "This photo has no date", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val day = Instant.ofEpochMilli(takenAt).atZone(ZoneId.systemDefault()).toLocalDate()
+        val timelineViewModel = ViewModelProvider(requireActivity(), TimelineViewModelFactory(apiClient))[TimelineViewModel::class.java]
+        timelineViewModel.rememberSelection(day.toString(), item.id)
+        timelineViewModel.applyLeaveOffSnapshot(
+            TimelineLeaveOff.Snapshot(memoryId = null, pendingAssetId = item.id, lastAssetId = item.id, allowScrollAdjust = true)
+        )
+        TimelineJump.requested = true
+        val nav = findNavController()
+        if (!nav.popBackStack(R.id.homeFragment, false)) nav.navigate(R.id.homeFragment)
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -60,6 +92,21 @@ class ImmichMediaSlider : MediaSliderFragment() {
         config.controllerPlugins += enabledPlugins.controllerPlugins
         config.viewPlugins += enabledPlugins.viewPlugins
         config.keyEventPlugins += enabledPlugins.keyEventPlugins
+
+        val apiClient = ApiClient.getClient(ApiClientConfig.fromPrefs())
+        val infoPanel = InfoPanelPlugin(
+            loadPeople = { id -> apiClient.getAsset(id).getOrNull()?.people.orEmpty().map { SliderPerson(it.id.toString(), it.name) } },
+            avatarUrl = { ApiUtil.getPersonThumbnail(UUID.fromString(it.id)) },
+            onPerson = { person ->
+                findNavController().navigate(
+                    R.id.personAssetsFragment,
+                    bundleOf("personId" to person.id, "personName" to (person.name ?: "Unknown"))
+                )
+            },
+            onShowInTimeline = { showInTimeline(it, apiClient) }
+        )
+        config.viewPlugins += infoPanel
+        config.keyEventPlugins = listOf(infoPanel) + config.keyEventPlugins
 
         loadMediaSliderView(config)
 

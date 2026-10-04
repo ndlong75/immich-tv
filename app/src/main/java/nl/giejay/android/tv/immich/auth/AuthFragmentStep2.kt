@@ -49,7 +49,7 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
 
     override fun onCreateActions(actions: MutableList<GuidedAction>, savedInstanceState: Bundle?) {
         addEditableAction(actions, ACTION_HOST, getString(R.string.server_url_hint), PreferenceManager.hostName.ifEmpty { "http://192.168.10.2:2283" }, InputType.TYPE_CLASS_TEXT)
-        addEditableAction(actions, ACTION_EMAIL, "Email", "", InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        addEditableAction(actions, ACTION_EMAIL, "Email", PreferenceManager.sharedPreference.getString("last_login_email", "") ?: "", InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
         addEditableAction(actions, ACTION_PASSWORD, "Password", "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         addCheckedAction(actions, ACTION_CHECK_CERTS, getString(R.string.disable_ssl_verification), getString(R.string.disable_ssl_verification_desc), PreferenceManager.get(DISABLE_SSL_VERIFICATION))
         addCheckedAction(actions, ACTION_DEBUG_MODE, getString(R.string.debug_mode), getString(R.string.debug_mode_desc), PreferenceManager.get(DEBUG_MODE))
@@ -88,6 +88,7 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
                 val token = response.body()?.accessToken
                 if (response.isSuccessful && token != null) {
                     PreferenceManager.save(SCREENSAVER_ALBUMS, emptySet())
+                    PreferenceManager.sharedPreference.edit().putString("last_login_email", entry.email).apply()
                     PreferenceManager.save(API_KEY, "Bearer:$token")
                     PreferenceManager.save(HOST_NAME, host)
                     PreferenceManager.save(DISABLE_SSL_VERIFICATION, disableSsl)

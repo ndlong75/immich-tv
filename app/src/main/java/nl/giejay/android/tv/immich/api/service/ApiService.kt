@@ -6,6 +6,7 @@ import nl.giejay.android.tv.immich.api.model.LoginRequest
 import nl.giejay.android.tv.immich.api.model.LoginResponse
 import nl.giejay.android.tv.immich.api.model.Memory
 import nl.giejay.android.tv.immich.api.model.PeopleResponse
+import nl.giejay.android.tv.immich.api.model.PersonStatistics
 import nl.giejay.android.tv.immich.api.model.SearchRequest
 import nl.giejay.android.tv.immich.api.model.SearchResponse
 import nl.giejay.android.tv.immich.api.model.TimeBucketAssetsResponse
@@ -43,6 +44,9 @@ interface ApiService {
 
     @GET("people")
     suspend fun listPeople(): Response<PeopleResponse>
+
+    @GET("people/{id}/statistics")
+    suspend fun personStatistics(@Path("id") id: String): Response<PersonStatistics>
 
     @PUT("assets")
     suspend fun updateAssets(@Body request: BulkUpdateAssetsRequest): Response<Unit>

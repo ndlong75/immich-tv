@@ -98,18 +98,6 @@ class MediaSliderController(
         return null
     }
 
-    /** TEMPORARY: on-screen diagnostics for key handling. */
-    fun debugToast(message: String) {
-        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
-    }
-
-    /** Shows / hides the metadata overlay. Returns false if the overlay view is not present. */
-    fun toggleMetadataOverlay(): Boolean {
-        val holder = controllerRootView.findViewById<View>(R.id.meta_data_holder) ?: return false
-        holder.visibility = if (holder.isVisible) View.GONE else View.VISIBLE
-        return true
-    }
-
     fun setCurrentPlayer(player: ExoPlayer?) {
         currentPlayer = player
     }
