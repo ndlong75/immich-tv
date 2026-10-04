@@ -113,7 +113,7 @@ fix_version() {
   else name=$(version_name); name="${name%.*}.$(( ${name##*.} + 1 ))"; fi
   [ "$cur_code" -ge "$need" ] || cur_code=$need
   set_version "$name" "$cur_code"
-  git commit -qam "Bump version to $name after upstream merge" || true
+  git commit -qam "Bump version to $name" || true
 }
 
 cmd_release() {
@@ -132,7 +132,8 @@ cmd_release() {
   info "waiting for the CI run of ${sha:0:7}"
   local run_id=""
   for _ in $(seq 1 18); do
-    run_id=$(gh_api "https://api.github.com/repos/$REPO/actions/runs?head_sha=$sha" | grep -m1 '"id"' | tr -dc 0-9 || true)
+    runs=$(gh_api "https://api.github.com/repos/$REPO/actions/runs?head_sha=$sha" || true)
+    run_id=$(echo "$runs" | grep -m1 '"id"' | tr -dc 0-9 || true)
     [ -n "$run_id" ] && break
     sleep 10
   done
@@ -151,7 +152,8 @@ cmd_release() {
 
   info "downloading the APK"
   local artifact tmp; tmp=$(mktemp -d)
-  artifact=$(gh_api "https://api.github.com/repos/$REPO/actions/runs/$run_id/artifacts" | grep -m1 '"id"' | tr -dc 0-9)
+  local artifacts; artifacts=$(gh_api "https://api.github.com/repos/$REPO/actions/runs/$run_id/artifacts")
+  artifact=$(echo "$artifacts" | grep -m1 '"id"' | tr -dc 0-9)
   gh_api -L "https://api.github.com/repos/$REPO/actions/artifacts/$artifact/zip" -o "$tmp/a.zip"
   mkdir -p "$APK_DIR"
   unzip -oq "$tmp/a.zip" -d "$APK_DIR"
