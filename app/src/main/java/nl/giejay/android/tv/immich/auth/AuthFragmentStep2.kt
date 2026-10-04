@@ -1,6 +1,9 @@
 package nl.giejay.android.tv.immich.auth
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.widget.Toast
@@ -43,15 +46,44 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
     private val ACTION_DEBUG_MODE = 4L
     private val ACTION_CONTINUE = 5L
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT in 23..28 && !LoginBackup.hasPermission(requireContext())) {
+            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), REQUEST_STORAGE)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_STORAGE && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            refillFromBackup()
+        }
+    }
+
+    private fun refillFromBackup() {
+        val backup = LoginBackup.load(requireContext()) ?: return
+        mapOf(ACTION_HOST to backup.host, ACTION_EMAIL to backup.email, ACTION_PASSWORD to backup.password).forEach { (id, value) ->
+            if (value.isBlank()) return@forEach
+            findActionById(id)?.let {
+                it.description = value
+                notifyActionChanged(findActionPositionById(id))
+            }
+        }
+    }
+
     override fun onCreateGuidance(savedInstanceState: Bundle?): GuidanceStylist.Guidance {
         val icon: Drawable = requireContext().getDrawable(R.drawable.icon)!!
         return GuidanceStylist.Guidance(getString(R.string.app_name), "Sign in with your Immich email and password", "", icon)
     }
 
     override fun onCreateActions(actions: MutableList<GuidedAction>, savedInstanceState: Bundle?) {
-        addEditableAction(actions, ACTION_HOST, getString(R.string.server_url_hint), PreferenceManager.hostName.ifEmpty { "http://192.168.10.2:2283" }, InputType.TYPE_CLASS_TEXT)
-        addEditableAction(actions, ACTION_EMAIL, "Email", PreferenceManager.sharedPreference.getString("last_login_email", "") ?: "", InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        addEditableAction(actions, ACTION_PASSWORD, "Password", savedPassword(), InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val backup = LoginBackup.load(requireContext())
+        val host = backup?.host?.takeIf { it.isNotBlank() } ?: PreferenceManager.hostName.ifEmpty { "http://192.168.10.2:2283" }
+        val email = backup?.email?.takeIf { it.isNotBlank() } ?: PreferenceManager.sharedPreference.getString("last_login_email", "") ?: ""
+        val password = backup?.password?.takeIf { it.isNotBlank() } ?: savedPassword()
+        addEditableAction(actions, ACTION_HOST, getString(R.string.server_url_hint), host, InputType.TYPE_CLASS_TEXT)
+        addEditableAction(actions, ACTION_EMAIL, "Email", email, InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        addEditableAction(actions, ACTION_PASSWORD, "Password", password, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         addCheckedAction(actions, ACTION_CHECK_CERTS, getString(R.string.disable_ssl_verification), getString(R.string.disable_ssl_verification_desc), PreferenceManager.get(DISABLE_SSL_VERIFICATION))
         addCheckedAction(actions, ACTION_DEBUG_MODE, getString(R.string.debug_mode), getString(R.string.debug_mode_desc), PreferenceManager.get(DEBUG_MODE))
     }
@@ -74,6 +106,7 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
             }, Toast.LENGTH_SHORT).show()
             return
         }
+        LoginBackup.save(requireContext(), LoginBackup.Login(entry.hostName.trimEnd('/'), entry.email, entry.password))
         val disableSsl = findActionById(ACTION_CHECK_CERTS)?.isChecked == true
         val debugMode = findActionById(ACTION_DEBUG_MODE)?.isChecked == true
         val host = entry.hostName.trimEnd('/')
@@ -116,5 +149,9 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         // https://github.com/giejay/Immich-Android-TV/issues/4
         val position = findActionPositionById(actionId)
         return getActionItemView(position)?.findViewById<GuidedActionEditText>(R.id.guidedactions_item_description)?.text.toString()
+    }
+
+    private companion object {
+        const val REQUEST_STORAGE = 1001
     }
 }

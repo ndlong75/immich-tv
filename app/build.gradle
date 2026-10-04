@@ -15,14 +15,21 @@ android {
         applicationId "nl.giejay.android.tv.immich"
         minSdkVersion 24
         targetSdkVersion 37
-        versionCode 153
-        versionName "6.1.6"
+        versionCode 154
+        versionName "6.1.7"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testOptions.unitTests.includeAndroidResources = true
     }
 
     signingConfigs {
+        // Fixed (public) debug key so CI builds update in place instead of needing an uninstall first.
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
         release {
             storeFile file(System.getenv("RELEASE_KEYSTORE_PATH") ?: "keystore")
             storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "dummy"
@@ -32,6 +39,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled true
             shrinkResources true
