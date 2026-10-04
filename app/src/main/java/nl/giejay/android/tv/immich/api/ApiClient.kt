@@ -61,7 +61,7 @@ class ApiClient(private val config: ApiClientConfig) {
     suspend fun listAlbums(assetId: Option<String> = None): Either<String, List<Album>> {
         return executeAPICall(200) { service.listAlbums(false, assetId.getOrNull()) }.flatMap { albums ->
             return executeAPICall(200) { service.listAlbums(true, assetId.getOrNull()) }.map { sharedAlbums ->
-                albums + sharedAlbums
+                (albums + sharedAlbums).distinctBy { it.id }
             }
         }
     }
@@ -145,8 +145,10 @@ class ApiClient(private val config: ApiClientConfig) {
     }
 
     private fun excludeByTag() = { asset: Asset ->
-        asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true
+        (asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true) && notArchived(asset)
     }
+
+    private fun notArchived(asset: Asset) = asset.visibility != "archive" && asset.isArchived != true
 
     suspend fun listBuckets(albumId: String, order: PhotosOrder): Either<String, List<Bucket>> {
         return executeAPICall(200) {
@@ -158,12 +160,12 @@ class ApiClient(private val config: ApiClientConfig) {
         val response = executeAPICall(200) {
             service.getBucketV2(albumId = albumId, timeBucket = bucket, order = if (order == PhotosOrder.OLDEST_NEWEST) "asc" else "desc")
         }.map {
-            it.id.pmap { t -> service.getAsset(t).body() }.filterNotNull().toList()
+            it.id.pmap { t -> service.getAsset(t).body() }.filterNotNull().toList().filter { a -> notArchived(a) }
         }
         if (response.isLeft()) {
             return executeAPICall(200) {
                 service.getBucket(albumId = albumId, timeBucket = bucket, order = if (order == PhotosOrder.OLDEST_NEWEST) "asc" else "desc")
-            }
+            }.map { it.filter { a -> notArchived(a) } }
         }
         return response
     }
