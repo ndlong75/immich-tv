@@ -12,6 +12,7 @@ import nl.giejay.android.tv.immich.timeline.TimelineJump
 import nl.giejay.android.tv.immich.timeline.TimelineLeaveOff
 import nl.giejay.android.tv.immich.timeline.TimelineViewModel
 import nl.giejay.android.tv.immich.timeline.TimelineViewModelFactory
+import nl.giejay.mediaslider.model.SliderInfo
 import nl.giejay.mediaslider.model.SliderItem
 import nl.giejay.mediaslider.model.SliderPerson
 import nl.giejay.mediaslider.plugin.InfoPanelPlugin
@@ -95,7 +96,13 @@ class ImmichMediaSlider : MediaSliderFragment() {
 
         val apiClient = ApiClient.getClient(ApiClientConfig.fromPrefs())
         val infoPanel = InfoPanelPlugin(
-            loadPeople = { id -> apiClient.getAsset(id).getOrNull()?.people.orEmpty().map { SliderPerson(it.id.toString(), it.name) } },
+            loadInfo = { item ->
+                val asset = apiClient.getAsset(item.id).getOrNull()
+                SliderInfo(
+                    people = asset?.people.orEmpty().map { SliderPerson(it.id.toString(), it.name) },
+                    lines = asset?.let { AssetInfoFormatter.lines(it) }.orEmpty()
+                )
+            },
             avatarUrl = { ApiUtil.getPersonThumbnail(UUID.fromString(it.id)) },
             onPerson = { person ->
                 findNavController().navigate(

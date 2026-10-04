@@ -4,6 +4,9 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.os.Handler
 import android.view.Gravity
 import android.view.KeyEvent
@@ -17,6 +20,7 @@ import com.zeuskartik.mediaslider.R
 import kotlinx.coroutines.launch
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.model.SliderItem
+import nl.giejay.mediaslider.model.SliderInfo
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.model.SliderPerson
 
@@ -27,7 +31,7 @@ import nl.giejay.mediaslider.model.SliderPerson
  * entry) closes. Left/Right are swallowed so the photo does not change underneath.
  */
 class InfoPanelPlugin(
-    private val loadPeople: suspend (assetId: String) -> List<SliderPerson>,
+    private val loadInfo: suspend (item: SliderItem) -> SliderInfo,
     private val avatarUrl: (SliderPerson) -> String,
     private val onPerson: (SliderPerson) -> Unit,
     private val onShowInTimeline: (SliderItem) -> Unit
@@ -37,7 +41,8 @@ class InfoPanelPlugin(
     private var rootView: ConstraintLayout? = null
     private var current: SliderItem? = null
     private var people: List<SliderPerson> = emptyList()
-    private val peopleCache = HashMap<String, List<SliderPerson>>()
+    private val infoCache = HashMap<String, SliderInfo>()
+    private var infoView: TextView? = null
     private var open = false
     private var selected = 0
     private val consumedDown = HashSet<Int>()
@@ -64,6 +69,25 @@ class InfoPanelPlugin(
             marginEnd = dp(ctx, 32)
         })
         this.panel = panel
+
+        val info = TextView(ctx).apply {
+            visibility = View.GONE
+            setTextColor(Color.WHITE)
+            textSize = 15f
+            setLineSpacing(0f, 1.15f)
+            setPadding(dp(ctx, 20), dp(ctx, 14), dp(ctx, 20), dp(ctx, 14))
+            background = rounded(Color.parseColor("#B3000000"), dp(ctx, 16).toFloat())
+        }
+        rootView.addView(info, ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.WRAP_CONTENT,
+            ConstraintLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+            marginStart = dp(ctx, 48)
+            bottomMargin = dp(ctx, 32)
+        })
+        infoView = info
         metadataHolder()?.visibility = View.GONE
     }
 
@@ -78,17 +102,20 @@ class InfoPanelPlugin(
         val item = sliderItem.mainItem
         if (current?.id != item.id) selected = 0
         current = item
-        people = item.people.ifEmpty { peopleCache[item.id] ?: emptyList() }
+        people = infoCache[item.id]?.people ?: item.people
         render()
-        if (item.people.isEmpty() && !peopleCache.containsKey(item.id)) {
-            context.ioScope.launch {
-                val loaded = runCatching { loadPeople(item.id) }.getOrDefault(emptyList())
-                peopleCache[item.id] = loaded
-                panel?.post {
-                    if (current?.id == item.id) {
-                        people = loaded
-                        render()
-                    }
+        ensureInfo(context, item)
+    }
+
+    private fun ensureInfo(context: SliderViewPluginContext, item: SliderItem) {
+        if (infoCache.containsKey(item.id)) return
+        context.ioScope.launch {
+            val loaded = runCatching { loadInfo(item) }.getOrNull() ?: return@launch
+            infoCache[item.id] = loaded
+            panel?.post {
+                if (current?.id == item.id) {
+                    people = loaded.people.ifEmpty { item.people }
+                    render()
                 }
             }
         }
@@ -128,13 +155,13 @@ class InfoPanelPlugin(
         selected = 0
         render()
         panel?.visibility = View.VISIBLE
-        metadataHolder()?.visibility = View.VISIBLE
+        infoView?.visibility = View.VISIBLE
     }
 
     private fun hide() {
         open = false
         panel?.visibility = View.GONE
-        metadataHolder()?.visibility = View.GONE
+        infoView?.visibility = View.GONE
     }
 
     private fun select(index: Int) {
@@ -152,7 +179,27 @@ class InfoPanelPlugin(
     private fun metadataHolder(): View? = rootView?.findViewById(R.id.meta_data_holder)
 
     /** Shows at most [WINDOW] entries around the selection so tall lists stay on screen. */
+    private fun renderInfo() {
+        val lines = current?.id?.let { infoCache[it]?.lines }
+        val text = SpannableStringBuilder()
+        if (lines == null) {
+            text.append("Loading…")
+        } else if (lines.isEmpty()) {
+            text.append("No details available")
+        } else {
+            lines.forEachIndexed { i, (label, value) ->
+                if (i > 0) text.append('\n')
+                val start = text.length
+                text.append(label)
+                text.setSpan(StyleSpan(Typeface.BOLD), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                text.append("   ").append(value)
+            }
+        }
+        infoView?.text = text
+    }
+
     private fun render() {
+        renderInfo()
         val panel = panel ?: return
         val ctx = panel.context
         panel.removeAllViews()

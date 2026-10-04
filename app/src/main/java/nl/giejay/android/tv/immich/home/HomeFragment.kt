@@ -94,11 +94,22 @@ class HomeFragment : BrowseSupportFragment() {
             val index = (0 until mRowsAdapter.size()).firstOrNull {
                 (mRowsAdapter.get(it) as Row).headerItem.name == getString(R.string.timeline)
             } ?: return
-            view?.post {
-                setSelectedPosition(index, false)
-                if (isShowingHeaders && !isInHeadersTransition) startHeadersTransition(false)
-            }
+            showTimelinePage(index, attemptsLeft = 15)
         }
+    }
+
+    /** Leanback may still be building the page, so keep retrying until the menu is closed on Timeline. */
+    private fun showTimelinePage(index: Int, attemptsLeft: Int) {
+        val v = view ?: return
+        v.postDelayed({
+            if (!isAdded) return@postDelayed
+            val onTimeline = mRowsAdapter.size() > index &&
+                (mRowsAdapter.get(index) as Row).headerItem.name == getString(R.string.timeline) &&
+                selectedPosition == index
+            if (!onTimeline) setSelectedPosition(index, false)
+            if (isShowingHeaders && !isInHeadersTransition) startHeadersTransition(false)
+            if ((!onTimeline || isShowingHeaders) && attemptsLeft > 0) showTimelinePage(index, attemptsLeft - 1)
+        }, 150)
     }
 
     private fun setupUi() {

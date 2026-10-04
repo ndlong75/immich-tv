@@ -11,7 +11,17 @@ data class AssetExifInfo(
     val country: String?,
     val dateTimeOriginal: Date?,
     val make: String?,
-    val model: String?
+    val model: String?,
+    val fileSizeInByte: Long? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val state: String? = null,
+    val lensModel: String? = null,
+    val fNumber: Double? = null,
+    val focalLength: Double? = null,
+    val iso: Int? = null,
+    val exposureTime: String? = null,
+    val timeZone: String? = null
 )
 
 data class Tag(

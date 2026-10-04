@@ -12,6 +12,9 @@ class StaticMetaDataProvider(private val value: String?) : MetaDataProvider {
 
 data class SliderPerson(val id: String, val name: String?)
 
+/** Detail shown by the info panel: people in the photo and "label" to "value" lines. */
+data class SliderInfo(val people: List<SliderPerson>, val lines: List<Pair<String, String>>)
+
 class SliderItem(
     var id: String,
     val url: String?,
