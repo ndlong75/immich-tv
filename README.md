@@ -101,6 +101,8 @@ Custom code lives in: `mediaslider/.../plugin/InfoPanelPlugin.kt`, `ImmichRemote
 
 ## Merging upstream updates
 
+`scripts/immichtv.sh all` does everything below automatically (it stops if there are merge conflicts or CI fails); see `scripts/immichtv.sh help` for the single steps (`status`, `sync`, `release`, `install`). By hand:
+
 ```
 git remote add upstream https://github.com/giejay/Immich-Android-TV.git   # once
 git fetch upstream --tags
