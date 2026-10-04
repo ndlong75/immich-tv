@@ -26,9 +26,12 @@ class PersonAssetsFragment : GenericAssetFragment() {
             pageCount,
             random = false,
             order = "desc",
+            endDate = jumpMonth?.atEndOfMonth()?.atTime(java.time.LocalTime.MAX),
             contentType = currentFilter,
             personIds = listOf(UUID.fromString(personId))).map { it.assets }
     }
+
+    override suspend fun loadDateBuckets(apiClient: ApiClient) = apiClient.getTimeBuckets(personId = personId).getOrNull()
 
     override fun showMediaCount(): Boolean {
         return false

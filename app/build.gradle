@@ -15,8 +15,8 @@ android {
         applicationId "nl.giejay.android.tv.immich"
         minSdkVersion 24
         targetSdkVersion 37
-        versionCode 157
-        versionName "6.1.10"
+        versionCode 158
+        versionName "6.1.11"
 
         // Fire TV / Android TV boxes are ARM only; dropping x86 roughly halves the APK.
         ndk {

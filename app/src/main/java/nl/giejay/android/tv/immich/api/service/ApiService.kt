@@ -59,7 +59,9 @@ interface ApiService {
     suspend fun getTimeBuckets(
         @Query("order") order: String = "desc",
         @Query("visibility") visibility: String? = "timeline",
-        @Query("withPartners") withPartners: Boolean? = null
+        @Query("withPartners") withPartners: Boolean? = null,
+        @Query("personId") personId: String? = null,
+        @Query("albumId") albumId: String? = null
     ): Response<List<TimeBucketSummary>>
 
     @GET("timeline/bucket")

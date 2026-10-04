@@ -35,16 +35,16 @@ class AlbumDetailsFragment : GenericAssetFragment() {
             page = page,
             pageCount = pageCount,
             order = if (currentSort == PhotosOrder.NEWEST_OLDEST) "desc" else "asc",
+            fromDate = jumpFrom(),
+            endDate = jumpTo(),
             contentType = currentFilter,
             albumIds = listOf(albumId)
         ).map { it.assets.map { a -> a.copy(albumName = albumName) } }
     }
 
-    override fun onItemSelected(card: Card, indexOf: Int) {
-        // no use case yet
-    }
+    override suspend fun loadDateBuckets(apiClient: ApiClient) = apiClient.getTimeBuckets(albumId = albumId).getOrNull()
 
-    override fun openPopUpMenu() {
+    override fun openSettings() {
         findNavController().navigate(
             HomeFragmentDirections.actionGlobalToSettingsDialog("album_details", albumId, albumName)
         )

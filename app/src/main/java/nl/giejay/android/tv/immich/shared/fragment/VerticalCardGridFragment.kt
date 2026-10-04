@@ -2,6 +2,7 @@ package nl.giejay.android.tv.immich.shared.fragment
 
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.KeyEvent
 import android.view.View
@@ -115,6 +116,8 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
                     // open popup menu on the right side if its the last photo in the row and user presses right button
                     if (it?.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && ((adapter.size() == 0 && allPagesLoaded) || currentSelectedIndex > 0 && (currentSelectedIndex % COLUMNS == 3 || currentSelectedIndex + 1 == adapter.size()))) {
                         openPopUpMenu()
+                    } else if (it?.keyCode == KeyEvent.KEYCODE_MENU && SystemClock.uptimeMillis() - (it?.eventTime ?: 0L) < 800) {
+                        onMenuKey()
                     } else if (it?.keyCode == KeyEvent.KEYCODE_FORWARD || it?.keyCode == KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD || it?.keyCode == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD) {
                         updateManualPositionHandler(adapter.size() - 1)
                     } else if (it?.keyCode == KeyEvent.KEYCODE_MEDIA_REWIND || it?.keyCode == KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD) {
@@ -195,6 +198,10 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
         assets = emptyList()
         assetsStillToRender.clear()
         adapter.clear()
+    }
+
+    protected open fun onMenuKey() {
+        // to implement by children
     }
 
     protected open fun openPopUpMenu() {

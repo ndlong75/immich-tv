@@ -18,8 +18,12 @@ class AllAssetFragment : GenericAssetFragment() {
             pageCount,
             false,
             if (currentSort == PhotosOrder.NEWEST_OLDEST) "desc" else "asc",
+            fromDate = jumpFrom(),
+            endDate = jumpTo(),
             contentType = currentFilter).map { it.assets }
     }
+
+    override suspend fun loadDateBuckets(apiClient: ApiClient) = apiClient.getTimeBuckets().getOrNull()
 
     override fun showMediaCount(): Boolean {
         return PreferenceManager.get(SLIDER_SHOW_MEDIA_COUNT)

@@ -2,6 +2,19 @@ package nl.giejay.android.tv.immich.assets
 
 import android.app.AlertDialog
 import android.os.Bundle
+import java.time.ZoneId
+import java.time.YearMonth
+import java.time.LocalTime
+import java.time.LocalDateTime
+import nl.giejay.android.tv.immich.timeline.TimelineScrubberView
+import nl.giejay.android.tv.immich.timeline.TimelineDatePicker
+import nl.giejay.android.tv.immich.api.model.TimeBucketSummary
+import nl.giejay.android.tv.immich.api.ApiClient
+import nl.giejay.android.tv.immich.R
+import android.widget.FrameLayout
+import android.view.ViewGroup
+import android.view.Gravity
+import android.app.Dialog
 import android.widget.Toast
 import android.view.View
 import androidx.fragment.app.activityViewModels
@@ -65,6 +78,7 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
         super.onCreate(savedInstanceState)
         PreferenceManager.subscribeMultiple(listOf(sortingKey, filterKey)) { state ->
             if(state[sortingKey.key()] != currentSort || state[filterKey.key()] != currentFilter){
+                jumpMonth = null
                 clearState()
                 currentSort = state[sortingKey.key()] as PhotosOrder
                 currentFilter = state[filterKey.key()] as ContentType
@@ -130,14 +144,87 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
     }
 
     override fun onItemSelected(card: Card, indexOf: Int) {
-        // no use case yet
+        val scrubber = dateScrubber ?: return
+        if (scrubber.hasFocus()) return
+        val asset = assets.firstOrNull { it.id == card.id } ?: return
+        val date = asset.exifInfo?.dateTimeOriginal ?: asset.fileCreatedAt ?: asset.fileModifiedAt ?: return
+        scrubber.setIndicatorMonthKey("${YearMonth.from(date.toInstant().atZone(ZoneId.systemDefault()))}-01")
+    }
+
+    // ---- Date navigation (chronological lists): year/month picker on Menu + right-edge month rail.
+
+    /** Month buckets for this list, newest first; null (default) turns date navigation off. */
+    protected open suspend fun loadDateBuckets(apiClient: ApiClient): List<TimeBucketSummary>? = null
+
+    /** When set, the list restarts at this month (set by the picker / rail). */
+    protected var jumpMonth: YearMonth? = null
+
+    /** `takenAfter` for an oldest-first list that was jumped to [jumpMonth]. */
+    protected fun jumpFrom(): LocalDateTime? =
+        jumpMonth?.takeIf { currentSort == PhotosOrder.OLDEST_NEWEST }?.atDay(1)?.atStartOfDay()
+
+    /** `takenBefore` for a newest-first list that was jumped to [jumpMonth]. */
+    protected fun jumpTo(): LocalDateTime? =
+        jumpMonth?.takeIf { currentSort == PhotosOrder.NEWEST_OLDEST }?.atEndOfMonth()?.atTime(LocalTime.MAX)
+
+    private var dateBuckets: List<TimeBucketSummary> = emptyList()
+    private var dateScrubber: TimelineScrubberView? = null
+    private var datePicker: Dialog? = null
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        if (!PreferenceManager.isLoggedId()) return
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val buckets = loadDateBuckets(apiClient)?.takeIf { it.isNotEmpty() } ?: return@launch
+            withContext(Dispatchers.Main) {
+                if (isAdded && dateScrubber == null) installDateScrubber(view, buckets)
+            }
+        }
+    }
+
+    private fun installDateScrubber(root: View, buckets: List<TimeBucketSummary>) {
+        dateBuckets = buckets
+        val scrubber = TimelineScrubberView(requireContext())
+        scrubber.setBuckets(buckets)
+        scrubber.onCommit = { monthKey, exitToGrid ->
+            jumpToMonth(monthKey)
+            if (exitToGrid) focusGrid()
+        }
+        scrubber.onRightEdge = { openSettings() }
+        val width = (80 * resources.displayMetrics.density).toInt()
+        (root as ViewGroup).addView(scrubber, FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END))
+        dateScrubber = scrubber
+    }
+
+    private fun jumpToMonth(bucketKey: String) {
+        jumpMonth = runCatching { YearMonth.parse(bucketKey.take(7)) }.getOrNull() ?: return
+        clearState()
+        fetchInitialItems()
+    }
+
+    private fun focusGrid() {
+        view?.findViewById<View>(R.id.browse_grid_dock)?.requestFocus()
+    }
+
+    override fun onMenuKey() {
+        if (dateBuckets.isEmpty() || datePicker?.isShowing == true) return
+        datePicker = TimelineDatePicker.show(requireContext(), dateBuckets) { bucketKey ->
+            jumpToMonth(bucketKey)
+            focusGrid()
+        }
     }
 
     open fun showMediaCount(): Boolean {
         return false
     }
 
+    /** Right edge of the grid: go to the month rail when there is one, otherwise open the settings. */
     override fun openPopUpMenu() {
+        val scrubber = dateScrubber
+        if (scrubber != null && !scrubber.hasFocus()) scrubber.requestFocus() else openSettings()
+    }
+
+    protected open fun openSettings() {
         findNavController().navigate(
             HomeFragmentDirections.actionGlobalToSettingsDialog("generic_asset_settings")
         )
