@@ -24,30 +24,14 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: google-services.json and extra strings file
-      env:
-        GOOGLE_SERVICES_BASE64: ${{secrets.GOOGLE_SERVICES_BASE64}}
-        STRINGS_OTHER_BASE64: ${{secrets.STRINGS_OTHER}}
-      run: |
-         echo $GOOGLE_SERVICES_BASE64 | base64 --decode > ./app/google-services.json
-         echo $STRINGS_OTHER_BASE64 | base64 --decode > ./app/src/main/res/values/strings_other.xml
+    - name: Use example google-services.json
+      run: cp app/google-services.example app/google-services.json
 
-    - name: Decode Keystore
-      env:
-        KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-      run: |
-        echo "$KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
-
-    - name: Build signed APK
-      env:
-        RELEASE_KEYSTORE_PATH: ${{ github.workspace }}/release-keystore.jks
-        RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-      run: ./gradlew assembleRelease
+    - name: Build debug APK
+      run: ./gradlew assembleDebug
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-          name: immich-tv-beta.apk
-          path: ./app/build/outputs/apk/release/*.apk
+          name: immich-tv-debug.apk
+          path: ./app/build/outputs/apk/debug/*.apk
