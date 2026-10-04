@@ -3,6 +3,10 @@ package nl.giejay.android.tv.immich.timeline
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
+import android.app.Dialog
+import android.os.SystemClock
+import android.view.KeyEvent
+import nl.giejay.android.tv.immich.shared.viewmodel.KeyEventsViewModel
 import android.os.Looper
 import android.util.TypedValue
 import android.view.LayoutInflater
@@ -380,11 +384,37 @@ class TimelineFragment : BrandedSupportFragment(), BrowseSupportFragment.MainFra
             }
         }
 
+        // Menu button opens the "Jump to date" picker (years / months).
+        val keyEvents = ViewModelProvider(requireActivity())[KeyEventsViewModel::class.java]
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                keyEvents.state.collect { event ->
+                    if (event != null && event.keyCode == KeyEvent.KEYCODE_MENU && event.action == KeyEvent.ACTION_DOWN &&
+                        SystemClock.uptimeMillis() - event.eventTime < 800
+                    ) {
+                        showDatePicker()
+                    }
+                }
+            }
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             viewModel.loadBucketList()
         }
         lifecycleScope.launch(Dispatchers.IO) {
             viewModel.loadMemories()
+        }
+    }
+
+    private var datePicker: Dialog? = null
+
+    private fun showDatePicker() {
+        val buckets = viewModel.buckets.value
+        if (!isAdded || buckets.isEmpty() || datePicker?.isShowing == true) return
+        datePicker = TimelineDatePicker.show(requireContext(), buckets) { bucketKey ->
+            // Same path as a committed scrubber jump that hands focus back to the mosaic.
+            scrubberPreviewMoved = true
+            commitJumpFromScrubber(bucketKey, exitToMosaic = true)
         }
     }
 
