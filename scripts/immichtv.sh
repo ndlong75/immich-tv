@@ -32,6 +32,8 @@ token() {
 
 gh_api() { curl -fsS -H "Authorization: Bearer $(token)" -H "Accept: application/vnd.github+json" "$@"; }
 
+rev_version_name() { git show "$1:$GRADLE" | sed -n 's/^[[:space:]]*versionName "\(.*\)"/\1/p' | head -1; }
+rev_version_code() { git show "$1:$GRADLE" | sed -n 's/^[[:space:]]*versionCode \([0-9]*\)/\1/p' | head -1; }
 version_name() { sed -n 's/^[[:space:]]*versionName "\(.*\)"/\1/p' "$GRADLE" | head -1; }
 version_code() { sed -n 's/^[[:space:]]*versionCode \([0-9]*\)/\1/p' "$GRADLE" | head -1; }
 
@@ -82,6 +84,8 @@ cmd_sync() {
   if [ "$(pending_upstream | wc -l)" -eq 0 ]; then
     info "already up to date with upstream"; UP_TO_DATE=1; return 0
   fi
+  # Upstream version when it was last merged (before this sync), to tell if upstream bumped its version.
+  local old_up_name; old_up_name=$(rev_version_name "$(git merge-base main "upstream/$UPSTREAM_BRANCH")")
   git checkout -q -B "$SYNC_BRANCH" main
   info "merging upstream/$UPSTREAM_BRANCH into $SYNC_BRANCH"
   if ! git merge --no-edit "upstream/$UPSTREAM_BRANCH"; then
@@ -91,13 +95,25 @@ cmd_sync() {
     echo "then: git add <files> && git commit, and run: $0 release"
     exit 2
   fi
-  # The fork's version must stay above upstream's.
-  local up_name up_code
-  up_name=$(git show "upstream/$UPSTREAM_BRANCH:$GRADLE" | sed -n 's/^[[:space:]]*versionName "\(.*\)"/\1/p' | head -1)
-  up_code=$(git show "upstream/$UPSTREAM_BRANCH:$GRADLE" | sed -n 's/^[[:space:]]*versionCode \([0-9]*\)/\1/p' | head -1)
-  set_version "${up_name}.1" "$((up_code + 1))"
-  git commit -qam "Bump version to $(version_name) after upstream merge"
+  fix_version "$old_up_name"
   info "merged cleanly; version $(version_name) (code $(version_code))"
+}
+
+# versionCode must always go up (Android refuses downgrades): above upstream's and above the last pushed main.
+# versionName: upstream bumped its version -> "<upstream>.1"; otherwise just +1 on our last number.
+fix_version() {
+  local old_up_name="${1:-}" up_name up_code main_code cur_code need
+  up_name=$(rev_version_name "upstream/$UPSTREAM_BRANCH"); up_code=$(rev_version_code "upstream/$UPSTREAM_BRANCH")
+  git fetch -q origin main
+  main_code=$(rev_version_code origin/main); cur_code=$(version_code)   # last version pushed
+  need=$(( (up_code > main_code ? up_code : main_code) + 1 ))
+  [ "$cur_code" -ge "$need" ] && [ -z "$old_up_name" ] && return 0
+  local name
+  if [ -n "$old_up_name" ] && [ "$up_name" != "$old_up_name" ]; then name="${up_name}.1"
+  else name=$(version_name); name="${name%.*}.$(( ${name##*.} + 1 ))"; fi
+  [ "$cur_code" -ge "$need" ] || cur_code=$need
+  set_version "$name" "$cur_code"
+  git commit -qam "Bump version to $name after upstream merge" || true
 }
 
 cmd_release() {
@@ -108,6 +124,7 @@ cmd_release() {
     git checkout -q main
     git merge --no-edit "$branch"
   fi
+  fix_version ""
   info "pushing main (no force)"
   git push origin main
   local sha; sha=$(git rev-parse HEAD)
