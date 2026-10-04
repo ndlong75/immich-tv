@@ -64,8 +64,9 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         val backup = LoginBackup.load(requireContext()) ?: return
         mapOf(ACTION_HOST to backup.host, ACTION_EMAIL to backup.email, ACTION_PASSWORD to backup.password).forEach { (id, value) ->
             if (value.isBlank()) return@forEach
+            if (id == ACTION_PASSWORD) storedPassword = value
             findActionById(id)?.let {
-                it.description = value
+                it.description = if (id == ACTION_PASSWORD) PASSWORD_MASK else value
                 notifyActionChanged(findActionPositionById(id))
             }
         }
@@ -83,7 +84,9 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         val password = backup?.password?.takeIf { it.isNotBlank() } ?: savedPassword()
         addEditableAction(actions, ACTION_HOST, getString(R.string.server_url_hint), host, InputType.TYPE_CLASS_TEXT)
         addEditableAction(actions, ACTION_EMAIL, "Email", email, InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        addEditableAction(actions, ACTION_PASSWORD, "Password", password, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        // Never show a saved password in clear text; the real value is kept in storedPassword.
+        storedPassword = password.takeIf { it.isNotEmpty() }
+        addEditableAction(actions, ACTION_PASSWORD, "Password", if (password.isEmpty()) "" else PASSWORD_MASK, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         addCheckedAction(actions, ACTION_CHECK_CERTS, getString(R.string.disable_ssl_verification), getString(R.string.disable_ssl_verification_desc), PreferenceManager.get(DISABLE_SSL_VERIFICATION))
         addCheckedAction(actions, ACTION_DEBUG_MODE, getString(R.string.debug_mode), getString(R.string.debug_mode_desc), PreferenceManager.get(DEBUG_MODE))
     }
@@ -96,7 +99,9 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
     override fun onGuidedActionClicked(action: GuidedAction) {
         super.onGuidedActionClicked(action)
         if (action.id != ACTION_CONTINUE) return
-        val entry = AuthSettings(getState(ACTION_HOST).trim(), getState(ACTION_EMAIL).trim(), getState(ACTION_PASSWORD))
+        val typedPassword = getState(ACTION_PASSWORD)
+        val password = if (typedPassword == PASSWORD_MASK) storedPassword ?: "" else typedPassword
+        val entry = AuthSettings(getState(ACTION_HOST).trim(), getState(ACTION_EMAIL).trim(), password)
         if (!entry.isValid()) {
             Toast.makeText(activity, when {
                 entry.hostName.isEmpty() -> getString(R.string.enter_server_url)
@@ -141,6 +146,18 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         }
     }
 
+    override fun onGuidedActionEditedAndProceed(action: GuidedAction): Long {
+        if (action.id == ACTION_PASSWORD) {
+            val text = action.description?.toString().orEmpty()
+            // Typing after the mask starts a new password; clearing the field forgets the old one.
+            if (text != PASSWORD_MASK) {
+                storedPassword = null
+                if (text.startsWith(PASSWORD_MASK)) action.description = text.removePrefix(PASSWORD_MASK)
+            }
+        }
+        return super.onGuidedActionEditedAndProceed(action)
+    }
+
     private fun savedPassword(): String =
         ApiKeyCipher.decryptOrAdoptLegacy(PreferenceManager.sharedPreference.getString("last_login_password", "") ?: "")
 
@@ -151,7 +168,10 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         return getActionItemView(position)?.findViewById<GuidedActionEditText>(R.id.guidedactions_item_description)?.text.toString()
     }
 
+    private var storedPassword: String? = null
+
     private companion object {
+        const val PASSWORD_MASK = "••••••••"
         const val REQUEST_STORAGE = 1001
     }
 }
