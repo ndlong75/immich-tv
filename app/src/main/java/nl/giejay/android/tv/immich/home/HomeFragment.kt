@@ -22,8 +22,6 @@ import nl.giejay.android.tv.immich.album.AlbumFragment
 import nl.giejay.android.tv.immich.assets.AllAssetFragment
 import nl.giejay.android.tv.immich.assets.FolderFragment
 import nl.giejay.android.tv.immich.assets.RandomAssetsFragment
-import nl.giejay.android.tv.immich.assets.RecentAssetsFragment
-import nl.giejay.android.tv.immich.assets.SimilarTimeAssetsFragment
 import nl.giejay.android.tv.immich.people.PeopleFragment
 import nl.giejay.android.tv.immich.settings.SettingsFragment
 import nl.giejay.android.tv.immich.shared.fragment.GridFragment
